@@ -118,7 +118,7 @@ export function M1Inventory() {
               min={0}
             />
             <InputField
-              label="HSD Stock"
+              label="HSD (High Speed Diesel) Stock"
               value={m1.hsdStock}
               onChange={(v) => updateM1({ hsdStock: v })}
               unit="tonnes"
@@ -136,7 +136,7 @@ export function M1Inventory() {
               min={0}
             />
             <InputField
-              label="FO Stock"
+              label="FO (Furnace Oil) Stock"
               value={m1.foStock}
               onChange={(v) => updateM1({ foStock: v })}
               unit="tonnes"
@@ -166,7 +166,7 @@ export function M1Inventory() {
 
           <Card title="Daily Consumption">
             <InputField
-              label="HSD Daily Consumption"
+              label="HSD (Diesel) Daily Consumption"
               value={m1.hsdDailyConsumption}
               onChange={(v) => updateM1({ hsdDailyConsumption: v })}
               unit="tonnes/day"
@@ -184,7 +184,7 @@ export function M1Inventory() {
               min={0}
             />
             <InputField
-              label="FO Daily Consumption"
+              label="FO (Furnace Oil) Daily Consumption"
               value={m1.foDailyConsumption}
               onChange={(v) => updateM1({ foDailyConsumption: v })}
               unit="tonnes/day"
@@ -208,14 +208,17 @@ export function M1Inventory() {
         <div className="flex-1 space-y-6">
           {/* Days-of-cover table */}
           <Card title="Days of Cover by Conservation Level">
+            <p className="text-[10px] text-slate mb-2">
+              HSD = High Speed Diesel | MS = Motor Spirit (Petrol) | FO = Furnace Oil
+            </p>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-border">
                     <th className="text-left py-2 pr-4 text-xs font-medium text-slate">Level</th>
-                    <th className="text-right py-2 px-3 text-xs font-medium text-slate">HSD</th>
-                    <th className="text-right py-2 px-3 text-xs font-medium text-slate">MS</th>
-                    <th className="text-right py-2 px-3 text-xs font-medium text-slate">FO</th>
+                    <th className="text-right py-2 px-3 text-xs font-medium text-slate" title="High Speed Diesel">HSD</th>
+                    <th className="text-right py-2 px-3 text-xs font-medium text-slate" title="Motor Spirit (Petrol)">MS</th>
+                    <th className="text-right py-2 px-3 text-xs font-medium text-slate" title="Furnace Oil">FO</th>
                   </tr>
                 </thead>
                 <tbody>

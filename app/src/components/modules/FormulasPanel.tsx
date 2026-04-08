@@ -12,7 +12,9 @@ function SectionDescription({ children }: { children: React.ReactNode }) {
 
 export function FormulasPanel() {
   const fp = useAppStore((s) => s.scenario.formulaParams);
+  const m7 = useAppStore((s) => s.scenario.m7);
   const update = useAppStore((s) => s.updateFormulaParams);
+  const updateM7 = useAppStore((s) => s.updateM7);
   const loadScenario = useAppStore((s) => s.loadScenario);
   const scenario = useAppStore((s) => s.scenario);
 
@@ -52,6 +54,36 @@ export function FormulasPanel() {
           <InputField label="FO Weight" value={fp.m1_foWeight} onChange={set('m1_foWeight')} step={0.01} min={0} max={1} />
           <div className={`text-xs font-mono mt-2 ${weightSumOk ? 'text-green-700' : 'text-red-600'}`}>
             Sum: {weightSum.toFixed(2)} {weightSumOk ? '(valid)' : '(should be 1.0)'}
+          </div>
+        </Card>
+
+        {/* M1/M7 — Demand Reductions */}
+        <Card title="M1/M7 — Demand Reductions by Conservation Level" className="lg:col-span-2">
+          <SectionDescription>
+            Percentage reduction in demand for each fuel type at each conservation level. These directly affect the days-of-cover projections in M1 and the depletion curves. Values are set as decimals (e.g., 0.08 = 8% reduction).
+          </SectionDescription>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-x-6">
+            <div>
+              <h4 className="text-xs font-semibold text-navy mb-2 uppercase tracking-wide">Alert (Level 1)</h4>
+              <InputField label="HSD (Diesel) Reduction" value={m7.alertReductions.hsd} onChange={(v) => updateM7({ alertReductions: { ...m7.alertReductions, hsd: v } })} step={0.01} min={0} max={1} unit="0-1" />
+              <InputField label="MS (Petrol) Reduction" value={m7.alertReductions.ms} onChange={(v) => updateM7({ alertReductions: { ...m7.alertReductions, ms: v } })} step={0.01} min={0} max={1} unit="0-1" />
+              <InputField label="FO (Furnace Oil) Reduction" value={m7.alertReductions.fo} onChange={(v) => updateM7({ alertReductions: { ...m7.alertReductions, fo: v } })} step={0.01} min={0} max={1} unit="0-1" />
+              <InputField label="JP-1 (Jet Fuel) Reduction" value={m7.alertReductions.jp1} onChange={(v) => updateM7({ alertReductions: { ...m7.alertReductions, jp1: v } })} step={0.01} min={0} max={1} unit="0-1" />
+            </div>
+            <div>
+              <h4 className="text-xs font-semibold text-navy mb-2 uppercase tracking-wide">Austerity (Level 2)</h4>
+              <InputField label="HSD (Diesel) Reduction" value={m7.austerityReductions.hsd} onChange={(v) => updateM7({ austerityReductions: { ...m7.austerityReductions, hsd: v } })} step={0.01} min={0} max={1} unit="0-1" />
+              <InputField label="MS (Petrol) Reduction" value={m7.austerityReductions.ms} onChange={(v) => updateM7({ austerityReductions: { ...m7.austerityReductions, ms: v } })} step={0.01} min={0} max={1} unit="0-1" />
+              <InputField label="FO (Furnace Oil) Reduction" value={m7.austerityReductions.fo} onChange={(v) => updateM7({ austerityReductions: { ...m7.austerityReductions, fo: v } })} step={0.01} min={0} max={1} unit="0-1" />
+              <InputField label="JP-1 (Jet Fuel) Reduction" value={m7.austerityReductions.jp1} onChange={(v) => updateM7({ austerityReductions: { ...m7.austerityReductions, jp1: v } })} step={0.01} min={0} max={1} unit="0-1" />
+            </div>
+            <div>
+              <h4 className="text-xs font-semibold text-navy mb-2 uppercase tracking-wide">Emergency (Level 3)</h4>
+              <InputField label="HSD (Diesel) Reduction" value={m7.emergencyReductions.hsd} onChange={(v) => updateM7({ emergencyReductions: { ...m7.emergencyReductions, hsd: v } })} step={0.01} min={0} max={1} unit="0-1" />
+              <InputField label="MS (Petrol) Reduction" value={m7.emergencyReductions.ms} onChange={(v) => updateM7({ emergencyReductions: { ...m7.emergencyReductions, ms: v } })} step={0.01} min={0} max={1} unit="0-1" />
+              <InputField label="FO (Furnace Oil) Reduction" value={m7.emergencyReductions.fo} onChange={(v) => updateM7({ emergencyReductions: { ...m7.emergencyReductions, fo: v } })} step={0.01} min={0} max={1} unit="0-1" />
+              <InputField label="JP-1 (Jet Fuel) Reduction" value={m7.emergencyReductions.jp1} onChange={(v) => updateM7({ emergencyReductions: { ...m7.emergencyReductions, jp1: v } })} step={0.01} min={0} max={1} unit="0-1" />
+            </div>
           </div>
         </Card>
 
