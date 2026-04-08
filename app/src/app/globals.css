@@ -1,0 +1,72 @@
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@300;400;500;600;700&display=swap');
+@import "tailwindcss";
+
+@theme inline {
+  --color-background: #FAF9F6;
+  --color-foreground: #1a1a2e;
+  --color-navy: #1a1a2e;
+  --color-navy-light: #2d2d4a;
+  --color-navy-dark: #0f0f1e;
+  --color-red-muted: #c0392b;
+  --color-red-light: #e74c3c;
+  --color-ochre: #d4a017;
+  --color-ochre-light: #f0c040;
+  --color-green-muted: #27ae60;
+  --color-slate: #64748b;
+  --color-slate-light: #94a3b8;
+  --color-border: #e2e0dc;
+  --color-card: #ffffff;
+  --color-card-hover: #f5f4f0;
+  --color-input-bg: #f5f4f0;
+  --color-accent-blue: #2563eb;
+  --font-sans: 'IBM Plex Sans', 'Inter', system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', monospace;
+}
+
+body {
+  background: var(--color-background);
+  color: var(--color-foreground);
+  font-family: var(--font-sans);
+}
+
+/* Classification banner */
+.classification-banner {
+  background: var(--color-navy);
+  color: #ffffff;
+  text-align: center;
+  padding: 4px 0;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-family: var(--font-mono);
+}
+
+/* Number styling */
+.font-number {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-slate-light);
+}
+
+/* Print styles for report */
+@media print {
+  .no-print { display: none !important; }
+  .print-only { display: block !important; }
+  body { background: white; }
+}
