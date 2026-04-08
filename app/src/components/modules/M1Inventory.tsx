@@ -6,6 +6,7 @@ import { ModulePanel, Card } from '@/components/ui/ModulePanel';
 import { InputField } from '@/components/ui/InputField';
 import {
   getDaysOfCover,
+  getWeightedDaysOfCover,
   computeDepletionCurve,
   getReductionForLevel,
   traceWeightedDaysOfCover,
@@ -49,7 +50,9 @@ const LEVEL_DASHES: Record<ConservationLevel, string> = {
 export function M1Inventory() {
   const m1 = useAppStore((s) => s.scenario.m1);
   const m7 = useAppStore((s) => s.scenario.m7);
+  const fp = useAppStore((s) => s.scenario.formulaParams);
   const updateM1 = useAppStore((s) => s.updateM1);
+  const m1Weights = useMemo(() => ({ hsd: fp.m1_hsdWeight, ms: fp.m1_msWeight, fo: fp.m1_foWeight }), [fp]);
 
   const m7Reductions = useMemo(
     () => ({
@@ -234,10 +237,10 @@ export function M1Inventory() {
               </table>
             </div>
             <div className="mt-3 pt-2 border-t border-border/50">
-              <InlineFormula trace={traceWeightedDaysOfCover(m1)}>
+              <InlineFormula trace={traceWeightedDaysOfCover(m1, undefined, m1Weights)}>
                 <span className="text-xs text-slate">Weighted Days of Cover: </span>
                 <span className="font-mono text-sm font-semibold text-navy">
-                  {(0.5 * getDaysOfCover(m1.hsdStock, m1.hsdDailyConsumption) + 0.35 * getDaysOfCover(m1.msStock, m1.msDailyConsumption) + 0.15 * getDaysOfCover(m1.foStock, m1.foDailyConsumption)).toFixed(1)} days
+                  {getWeightedDaysOfCover(m1, undefined, m1Weights).toFixed(1)} days
                 </span>
               </InlineFormula>
             </div>

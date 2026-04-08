@@ -16,7 +16,7 @@ export interface RefineryOutput {
   feasibilityScore: number;
 }
 
-export function getBlendedYield(refinery: Refinery, yieldMatrix: Record<string, YieldProfile>): YieldProfile {
+export function getBlendedYield(refinery: Refinery, yieldMatrix: Record<string, YieldProfile>, parcoHsdBonus: number = 5, parcoFoReduction: number = 5): YieldProfile {
   const blended: YieldProfile = { lpg: 0, naphthaPetrol: 0, hsd: 0, jp1Kero: 0, fo: 0, loss: 0 };
   let totalWeight = 0;
 
@@ -34,10 +34,10 @@ export function getBlendedYield(refinery: Refinery, yieldMatrix: Record<string, 
     blended.loss += y.loss * w;
   }
 
-  // PARCO gets +5% diesel, -5% FO due to mild conversion
+  // PARCO gets bonus diesel, reduced FO due to mild conversion
   if (refinery.id === 'parco') {
-    blended.hsd += 5;
-    blended.fo -= 5;
+    blended.hsd += parcoHsdBonus;
+    blended.fo -= parcoFoReduction;
   }
 
   return blended;
@@ -47,20 +47,22 @@ export function computeRefineryOutput(
   refinery: Refinery,
   yieldMatrix: Record<string, YieldProfile>,
   foStorageDays: number,
-  foDailyConsumption: number
+  foDailyConsumption: number,
+  fp?: { m3_foInfeasibleThreshold: number; m3_barrelToTonneConversion: number; m3_parcoHsdBonus: number; m3_parcoFoReduction: number }
 ): RefineryOutput {
-  const blend = getBlendedYield(refinery, yieldMatrix);
+  const foInfeasible = fp?.m3_foInfeasibleThreshold ?? 55;
+  const bblToTonne = fp?.m3_barrelToTonneConversion ?? 0.136;
+  const blend = getBlendedYield(refinery, yieldMatrix, fp?.m3_parcoHsdBonus, fp?.m3_parcoFoReduction);
   const dailyBpd = refinery.capacityBpd * refinery.utilization;
-  // Convert bpd to tonnes/day (approximate: 1 barrel ≈ 0.136 tonnes for crude)
-  const dailyTonnes = dailyBpd * 0.136;
+  const dailyTonnes = dailyBpd * bblToTonne;
 
   const foOutputTonnesDay = dailyTonnes * (blend.fo / 100);
   const foExcessDaily = foOutputTonnesDay - (foDailyConsumption * (refinery.capacityBpd / 443_400)); // proportional share
   const foStorageCapacity = foStorageDays * foDailyConsumption * (refinery.capacityBpd / 443_400);
   const foStorageDaysUntilFull = foExcessDaily > 0 ? foStorageCapacity / foExcessDaily : Infinity;
 
-  // Feasibility: 100 if FO <= 30% of output, drops linearly to 0 if FO >= 55%
-  const feasibilityScore = Math.max(0, Math.min(100, 100 * (55 - blend.fo) / 25));
+  // Feasibility: 100 if FO <= threshold-25, drops linearly to 0 if FO >= threshold
+  const feasibilityScore = Math.max(0, Math.min(100, 100 * (foInfeasible - blend.fo) / 25));
 
   return {
     refineryId: refinery.id,
@@ -77,9 +79,13 @@ export function computeRefineryOutput(
   };
 }
 
-export function computeAllRefineryOutputs(m3: M3State, foDailyConsumption: number): RefineryOutput[] {
+export function computeAllRefineryOutputs(
+  m3: M3State,
+  foDailyConsumption: number,
+  fp?: { m3_foInfeasibleThreshold: number; m3_barrelToTonneConversion: number; m3_parcoHsdBonus: number; m3_parcoFoReduction: number }
+): RefineryOutput[] {
   return m3.refineries.map((r) =>
-    computeRefineryOutput(r, m3.yieldMatrix, m3.foStorageDays, foDailyConsumption)
+    computeRefineryOutput(r, m3.yieldMatrix, m3.foStorageDays, foDailyConsumption, fp)
   );
 }
 

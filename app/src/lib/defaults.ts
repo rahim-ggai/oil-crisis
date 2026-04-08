@@ -1,7 +1,7 @@
 import type {
   M1State, M2State, M3State, M4State, M5State, M6State, M7State, M8State,
   Cargo, Refinery, YieldProfile, AlternateSource, ConservationMatrix, DemandReduction,
-  ScenarioState
+  ScenarioState, FormulaParams
 } from '@/types';
 
 // ============================================================
@@ -201,6 +201,56 @@ export const DEFAULT_M8: M8State = {
 };
 
 // ============================================================
+// Formula Parameters Defaults
+// ============================================================
+export const DEFAULT_FORMULA_PARAMS: FormulaParams = {
+  // M1
+  m1_hsdWeight: 0.5,
+  m1_msWeight: 0.35,
+  m1_foWeight: 0.15,
+  // M2
+  m2_lossProb_docked: 0.02,
+  m2_lossProb_warZone: 0.35,
+  m2_lossProb_outsideWarZone: 0.05,
+  m2_lossProb_contracted: 0.15,
+  m2_pipelineScoreBaseline: 3_000_000,
+  m2_iranPermittedTransitCap: 0.15,
+  m2_fullCorridorFloor: 0.40,
+  // M3
+  m3_foInfeasibleThreshold: 55,
+  m3_foFeasibleThreshold: 30,
+  m3_parcoHsdBonus: 5,
+  m3_parcoFoReduction: 5,
+  m3_barrelToTonneConversion: 0.136,
+  // M5
+  m5_vlccLoadSize: 500_000,
+  m5_maxCapacityBaseline: 700_000,
+  m5_securityMultiplier_hostile: 0.25,
+  m5_securityMultiplier_tense: 0.60,
+  m5_securityMultiplier_normal: 1.00,
+  // M6
+  m6_productPremium: 1.10,
+  m6_freightPremium: 1.15,
+  m6_warDurationMonths: 6,
+  m6_normalDemandBpd: 423_000,
+  // M8 thresholds
+  m8_stressD_maxDays: 30,
+  m8_stressP_maxMultiplier: 4,
+  m8_bufferDiscount: 0.5,
+  m8_thresholdAlert: 25,
+  m8_thresholdAusterity: 50,
+  m8_thresholdEmergency: 75,
+  // M8 hard overrides
+  m8_hardOverride_criticalStockDays: 7,
+  m8_hardOverride_noCargoDays: 14,
+  m8_hardOverride_priceMultiplier: 4,
+  m8_hardOverride_reservesFloor: 12,
+  m8_hardOverride_minAlternateScore: 30,
+  // M4
+  m4_activationScoreBaseline: 10_000,
+};
+
+// ============================================================
 // Full default scenario
 // ============================================================
 export const DEFAULT_SCENARIO: ScenarioState = {
@@ -214,6 +264,7 @@ export const DEFAULT_SCENARIO: ScenarioState = {
   m6: DEFAULT_M6,
   m7: DEFAULT_M7,
   m8: DEFAULT_M8,
+  formulaParams: DEFAULT_FORMULA_PARAMS,
 };
 
 // ============================================================

@@ -193,6 +193,63 @@ export interface M8State {
 }
 
 // ============================================================
+// Formula Parameters — editable constants across all modules
+// ============================================================
+export interface FormulaParams {
+  // M1: Weighted days of cover
+  m1_hsdWeight: number;     // default 0.5
+  m1_msWeight: number;      // default 0.35
+  m1_foWeight: number;      // default 0.15
+
+  // M2: Pipeline risk
+  m2_lossProb_docked: number;              // default 0.02
+  m2_lossProb_warZone: number;             // default 0.35
+  m2_lossProb_outsideWarZone: number;      // default 0.05
+  m2_lossProb_contracted: number;          // default 0.15
+  m2_pipelineScoreBaseline: number;        // default 3,000,000 bbl
+  m2_iranPermittedTransitCap: number;      // default 0.15
+  m2_fullCorridorFloor: number;            // default 0.40
+
+  // M3: Refinery feasibility
+  m3_foInfeasibleThreshold: number;        // default 55%
+  m3_foFeasibleThreshold: number;          // default 30% (implied: score=100 at this)
+  m3_parcoHsdBonus: number;                // default 5%
+  m3_parcoFoReduction: number;             // default 5%
+  m3_barrelToTonneConversion: number;      // default 0.136
+
+  // M5: Iran corridor
+  m5_vlccLoadSize: number;                 // default 500,000 bbl
+  m5_maxCapacityBaseline: number;          // default 700,000 bbl/day
+  m5_securityMultiplier_hostile: number;   // default 0.25
+  m5_securityMultiplier_tense: number;     // default 0.60
+  m5_securityMultiplier_normal: number;    // default 1.00
+
+  // M6: Price/affordability
+  m6_productPremium: number;               // default 1.10
+  m6_freightPremium: number;               // default 1.15
+  m6_warDurationMonths: number;            // default 6
+  m6_normalDemandBpd: number;              // default 423,000
+
+  // M8: Trigger thresholds
+  m8_stressD_maxDays: number;              // default 30
+  m8_stressP_maxMultiplier: number;        // default 4 (5× = max stress)
+  m8_bufferDiscount: number;               // default 0.5
+  m8_thresholdAlert: number;               // default 25
+  m8_thresholdAusterity: number;           // default 50
+  m8_thresholdEmergency: number;           // default 75
+
+  // M8: Hard overrides
+  m8_hardOverride_criticalStockDays: number;     // default 7
+  m8_hardOverride_noCargoDays: number;           // default 14
+  m8_hardOverride_priceMultiplier: number;       // default 4
+  m8_hardOverride_reservesFloor: number;         // default 12 (USD bn)
+  m8_hardOverride_minAlternateScore: number;     // default 30
+
+  // M4/M8: Alternate activation
+  m4_activationScoreBaseline: number;      // default 10,000 kbbl/month
+}
+
+// ============================================================
 // Top-level scenario state
 // ============================================================
 export interface ScenarioState {
@@ -206,10 +263,12 @@ export interface ScenarioState {
   m6: M6State;
   m7: M7State;
   m8: M8State;
+  formulaParams: FormulaParams;
 }
 
 export type ActivePanel =
   | 'dashboard'
   | 'm1' | 'm2' | 'm3' | 'm4' | 'm5' | 'm6' | 'm7' | 'm8'
   | 'scenarios'
-  | 'report';
+  | 'report'
+  | 'formulas';

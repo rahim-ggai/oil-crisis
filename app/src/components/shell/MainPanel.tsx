@@ -12,6 +12,7 @@ import { M7Conservation } from '@/components/modules/M7Conservation';
 import { M8Trigger } from '@/components/modules/M8Trigger';
 import { ScenarioManager } from '@/components/scenarios/ScenarioManager';
 import { ReportPanel } from '@/components/report/ReportPanel';
+import { FormulasPanel } from '@/components/modules/FormulasPanel';
 
 export function MainPanel() {
   const activePanel = useAppStore((s) => s.activePanel);
@@ -28,6 +29,7 @@ export function MainPanel() {
     case 'm8': return <M8Trigger />;
     case 'scenarios': return <ScenarioManager />;
     case 'report': return <ReportPanel />;
+    case 'formulas': return <FormulasPanel />;
     default: return <Dashboard />;
   }
 }

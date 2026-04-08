@@ -22,32 +22,34 @@ function getAlternateActivationScore(scenario: ScenarioState): number {
   const activeSources = scenario.m4.sources.filter((s) => s.activated);
   if (activeSources.length === 0) return 0;
   const totalLiftable = activeSources.reduce((s, a) => s + a.maxLiftableKbblMonth, 0);
-  // 10,000 kbbl/month = 100 score
-  return Math.min(100, (totalLiftable / 10_000) * 100);
+  const baseline = scenario.formulaParams.m4_activationScoreBaseline;
+  return Math.min(100, (totalLiftable / baseline) * 100);
 }
 
 export function computeTrigger(scenario: ScenarioState): TriggerOutput {
-  const { m1, m6, m8 } = scenario;
+  const { m1, m6, m8, formulaParams: fp } = scenario;
 
-  // D: weighted days of cover
-  const D = getWeightedDaysOfCover(m1);
+  // D: weighted days of cover (using formula params for weights)
+  const D = getWeightedDaysOfCover(m1, { hsd: 0, ms: 0, fo: 0, jp1: 0 }, {
+    hsd: fp.m1_hsdWeight, ms: fp.m1_msWeight, fo: fp.m1_foWeight,
+  });
 
   // P: price ratio
   const P = m6.currentBrentSpot / m6.preCrisisBrent;
 
   // S: pipeline status score
-  const S = getPipelineStatusScore(scenario.m2.cargoes, scenario.baselineMode);
+  const S = getPipelineStatusScore(scenario.m2.cargoes, scenario.baselineMode, fp.m2_pipelineScoreBaseline);
 
   // A: alternate activation score
   const A = getAlternateActivationScore(scenario);
 
   // I: Iran corridor score
-  const iranOutput = computeIranCorridor(scenario.m5, scenario.baselineMode);
+  const iranOutput = computeIranCorridor(scenario.m5, scenario.baselineMode, fp);
   const I = iranOutput.corridorScore;
 
-  // Normalized stress scores
-  const stressD = Math.max(0, Math.min(100, 100 * (30 - D) / 30));
-  const stressP = Math.max(0, Math.min(100, 100 * (P - 1) / 4));
+  // Normalized stress scores (using formula params)
+  const stressD = Math.max(0, Math.min(100, 100 * (fp.m8_stressD_maxDays - D) / fp.m8_stressD_maxDays));
+  const stressP = Math.max(0, Math.min(100, 100 * (P - 1) / fp.m8_stressP_maxMultiplier));
   const stressS = 100 - S;
   const bufferA = A;
   const bufferI = I;
@@ -55,23 +57,23 @@ export function computeTrigger(scenario: ScenarioState): TriggerOutput {
   const w = m8.weights;
   const compositeStress = Math.max(0, Math.min(100,
     (w.wD * stressD) + (w.wP * stressP) + (w.wS * stressS)
-    - (w.wA * bufferA * 0.5) - (w.wI * bufferI * 0.5)
+    - (w.wA * bufferA * fp.m8_bufferDiscount) - (w.wI * bufferI * fp.m8_bufferDiscount)
   ));
 
-  // Determine level from composite
+  // Determine level from composite (using formula params thresholds)
   let recommendedLevel: TriggerLevel = 'NORMAL';
-  if (compositeStress >= 75) recommendedLevel = 'EMERGENCY';
-  else if (compositeStress >= 50) recommendedLevel = 'AUSTERITY';
-  else if (compositeStress >= 25) recommendedLevel = 'ALERT';
+  if (compositeStress >= fp.m8_thresholdEmergency) recommendedLevel = 'EMERGENCY';
+  else if (compositeStress >= fp.m8_thresholdAusterity) recommendedLevel = 'AUSTERITY';
+  else if (compositeStress >= fp.m8_thresholdAlert) recommendedLevel = 'ALERT';
 
-  // Hard overrides
+  // Hard overrides (using formula params)
   let hardOverrideActive: string | null = null;
   const hsdDays = getDaysOfCover(m1.hsdStock, m1.hsdDailyConsumption);
   const msDays = getDaysOfCover(m1.msStock, m1.msDailyConsumption);
 
-  if (hsdDays < 7 || msDays < 7) {
+  if (hsdDays < fp.m8_hardOverride_criticalStockDays || msDays < fp.m8_hardOverride_criticalStockDays) {
     recommendedLevel = 'EMERGENCY';
-    hardOverrideActive = `Critical stock: HSD ${hsdDays.toFixed(1)}d, MS ${msDays.toFixed(1)}d — below 7-day threshold`;
+    hardOverrideActive = `Critical stock: HSD ${hsdDays.toFixed(1)}d, MS ${msDays.toFixed(1)}d — below ${fp.m8_hardOverride_criticalStockDays}-day threshold`;
   }
 
   const next7Cargoes = scenario.m2.cargoes.filter((c) => {
@@ -80,19 +82,19 @@ export function computeTrigger(scenario: ScenarioState): TriggerOutput {
     const diff = (eta.getTime() - now.getTime()) / (1000 * 60 * 60 * 24);
     return diff <= 7 && diff >= 0;
   });
-  if (D < 14 && next7Cargoes.length === 0) {
+  if (D < fp.m8_hardOverride_noCargoDays && next7Cargoes.length === 0) {
     recommendedLevel = 'EMERGENCY';
-    hardOverrideActive = `Days of cover ${D.toFixed(1)} < 14 and no cargoes arriving in 7 days`;
+    hardOverrideActive = `Days of cover ${D.toFixed(1)} < ${fp.m8_hardOverride_noCargoDays} and no cargoes arriving in 7 days`;
   }
 
-  if (P > 4 && m6.sbpReserves < 12 && (recommendedLevel === 'NORMAL' || recommendedLevel === 'ALERT')) {
+  if (P > fp.m8_hardOverride_priceMultiplier && m6.sbpReserves < fp.m8_hardOverride_reservesFloor && (recommendedLevel === 'NORMAL' || recommendedLevel === 'ALERT')) {
     recommendedLevel = 'AUSTERITY';
-    hardOverrideActive = `Price ${P.toFixed(1)}x baseline + reserves $${m6.sbpReserves}B < $12B`;
+    hardOverrideActive = `Price ${P.toFixed(1)}x baseline + reserves $${m6.sbpReserves}B < $${fp.m8_hardOverride_reservesFloor}B`;
   }
 
-  if (I === 0 && A < 30 && (recommendedLevel === 'NORMAL' || recommendedLevel === 'ALERT')) {
+  if (I === 0 && A < fp.m8_hardOverride_minAlternateScore && (recommendedLevel === 'NORMAL' || recommendedLevel === 'ALERT')) {
     recommendedLevel = 'AUSTERITY';
-    hardOverrideActive = `Iran corridor closed + alternate activation ${A.toFixed(0)}% < 30%`;
+    hardOverrideActive = `Iran corridor closed + alternate activation ${A.toFixed(0)}% < ${fp.m8_hardOverride_minAlternateScore}%`;
   }
 
   // Manual override

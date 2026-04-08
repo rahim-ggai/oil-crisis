@@ -15,6 +15,7 @@ const NAV_ITEMS: { id: ActivePanel; label: string; shortLabel?: string }[] = [
   { id: 'm8', label: 'M8: Trigger', shortLabel: 'Trigger' },
   { id: 'scenarios', label: 'Scenarios' },
   { id: 'report', label: 'Report' },
+  { id: 'formulas', label: 'Formulas' },
 ];
 
 export function LeftNav() {

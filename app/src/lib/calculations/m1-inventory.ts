@@ -17,13 +17,13 @@ export function getDaysOfCover(stock: number, dailyConsumption: number, reductio
 
 export function getWeightedDaysOfCover(
   m1: M1State,
-  reductions: DemandReduction = { hsd: 0, ms: 0, fo: 0, jp1: 0 }
+  reductions: DemandReduction = { hsd: 0, ms: 0, fo: 0, jp1: 0 },
+  weights: { hsd: number; ms: number; fo: number } = { hsd: 0.5, ms: 0.35, fo: 0.15 }
 ): number {
   const hsdDays = getDaysOfCover(m1.hsdStock, m1.hsdDailyConsumption, reductions.hsd);
   const msDays = getDaysOfCover(m1.msStock, m1.msDailyConsumption, reductions.ms);
   const foDays = getDaysOfCover(m1.foStock, m1.foDailyConsumption, reductions.fo);
-  // Weighted: 0.5*HSD + 0.35*MS + 0.15*FO
-  return 0.5 * hsdDays + 0.35 * msDays + 0.15 * foDays;
+  return weights.hsd * hsdDays + weights.ms * msDays + weights.fo * foDays;
 }
 
 export function computeDepletionCurve(
@@ -112,12 +112,13 @@ export function traceDaysOfCover(
 
 export function traceWeightedDaysOfCover(
   m1: M1State,
-  reductions: DemandReduction = { hsd: 0, ms: 0, fo: 0, jp1: 0 }
+  reductions: DemandReduction = { hsd: 0, ms: 0, fo: 0, jp1: 0 },
+  weights: { hsd: number; ms: number; fo: number } = { hsd: 0.5, ms: 0.35, fo: 0.15 }
 ): FormulaTrace {
   const hsdDays = getDaysOfCover(m1.hsdStock, m1.hsdDailyConsumption, reductions.hsd);
   const msDays = getDaysOfCover(m1.msStock, m1.msDailyConsumption, reductions.ms);
   const foDays = getDaysOfCover(m1.foStock, m1.foDailyConsumption, reductions.fo);
-  const weighted = 0.5 * hsdDays + 0.35 * msDays + 0.15 * foDays;
+  const weighted = weights.hsd * hsdDays + weights.ms * msDays + weights.fo * foDays;
 
   const hsdTrace = traceDaysOfCover(m1.hsdStock, m1.hsdDailyConsumption, reductions.hsd, 'HSD');
   const msTrace = traceDaysOfCover(m1.msStock, m1.msDailyConsumption, reductions.ms, 'MS');
@@ -131,14 +132,14 @@ export function traceWeightedDaysOfCover(
     steps: [
       {
         label: 'Weighted Days of Cover',
-        formula: '0.5 \u00d7 HSD_days + 0.35 \u00d7 MS_days + 0.15 \u00d7 FO_days',
-        substituted: `0.5 \u00d7 ${fmt(hsdDays)} + 0.35 \u00d7 ${fmt(msDays)} + 0.15 \u00d7 ${fmt(foDays)}`,
+        formula: `${weights.hsd} × HSD_days + ${weights.ms} × MS_days + ${weights.fo} × FO_days`,
+        substituted: `${fmt(weights.hsd, 2)} × ${fmt(hsdDays)} + ${fmt(weights.ms, 2)} × ${fmt(msDays)} + ${fmt(weights.fo, 2)} × ${fmt(foDays)}`,
         result: weighted,
         unit: 'days',
         variables: [
-          v('0.5', 'HSD weight', 0.5, 'constant'),
-          v('0.35', 'MS weight', 0.35, 'constant'),
-          v('0.15', 'FO weight', 0.15, 'constant'),
+          v('wHSD', 'HSD weight', weights.hsd, 'user-input'),
+          v('wMS', 'MS weight', weights.ms, 'user-input'),
+          v('wFO', 'FO weight', weights.fo, 'user-input'),
           v('HSD_days', 'HSD Days of Cover', hsdDays, 'computed', 'days'),
           v('MS_days', 'MS Days of Cover', msDays, 'computed', 'days'),
           v('FO_days', 'FO Days of Cover', foDays, 'computed', 'days'),

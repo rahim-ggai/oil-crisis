@@ -13,7 +13,8 @@ const LEVEL_COLORS: Record<string, string> = {
 
 export function StatusBar() {
   const scenario = useAppStore((s) => s.scenario);
-  const daysOfCover = getWeightedDaysOfCover(scenario.m1);
+  const { formulaParams: fp } = scenario;
+  const daysOfCover = getWeightedDaysOfCover(scenario.m1, undefined, { hsd: fp.m1_hsdWeight, ms: fp.m1_msWeight, fo: fp.m1_foWeight });
   const trigger = computeTrigger(scenario);
 
   return (

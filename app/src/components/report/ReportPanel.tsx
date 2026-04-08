@@ -53,17 +53,18 @@ function Row({ label, value, unit }: { label: string; value: string | number; un
 
 export function ReportPanel() {
   const scenario = useAppStore((s) => s.scenario);
-  const { m1, m2, m3, m4, m5, m6, m7, m8 } = scenario;
+  const { m1, m2, m3, m4, m5, m6, m7, m8, formulaParams: fp } = scenario;
 
   const triggerOutput = useMemo(() => computeTrigger(scenario), [scenario]);
-  const iranOutput = useMemo(() => computeIranCorridor(m5, scenario.baselineMode), [m5, scenario.baselineMode]);
-  const affordability = useMemo(() => computeAffordability(m6), [m6]);
+  const iranOutput = useMemo(() => computeIranCorridor(m5, scenario.baselineMode, fp), [m5, scenario.baselineMode, fp]);
+  const affordability = useMemo(() => computeAffordability(m6, fp), [m6, fp]);
   const rwBarrels = useMemo(() => getRiskWeightedBarrels(m2.cargoes, scenario.baselineMode), [m2.cargoes, scenario.baselineMode]);
-  const pipelineScore = useMemo(() => getPipelineStatusScore(m2.cargoes, scenario.baselineMode), [m2.cargoes, scenario.baselineMode]);
-  const refineryOutputs = useMemo(() => computeAllRefineryOutputs(m3, m1.foDailyConsumption), [m3, m1.foDailyConsumption]);
+  const pipelineScore = useMemo(() => getPipelineStatusScore(m2.cargoes, scenario.baselineMode, fp.m2_pipelineScoreBaseline), [m2.cargoes, scenario.baselineMode, fp]);
+  const refineryOutputs = useMemo(() => computeAllRefineryOutputs(m3, m1.foDailyConsumption, fp), [m3, m1.foDailyConsumption, fp]);
   const totalOutput = useMemo(() => getTotalDailyOutput(refineryOutputs), [refineryOutputs]);
 
-  const weightedDays = useMemo(() => getWeightedDaysOfCover(m1), [m1]);
+  const m1Weights = useMemo(() => ({ hsd: fp.m1_hsdWeight, ms: fp.m1_msWeight, fo: fp.m1_foWeight }), [fp]);
+  const weightedDays = useMemo(() => getWeightedDaysOfCover(m1, undefined, m1Weights), [m1, m1Weights]);
   const hsdDays = getDaysOfCover(m1.hsdStock, m1.hsdDailyConsumption);
   const msDays = getDaysOfCover(m1.msStock, m1.msDailyConsumption);
   const foDays = getDaysOfCover(m1.foStock, m1.foDailyConsumption);

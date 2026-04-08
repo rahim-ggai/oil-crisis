@@ -42,9 +42,10 @@ function fmtPKR(usdBillions: number, rate: number): string {
 export function M6Price() {
   const m6 = useAppStore((s) => s.scenario.m6);
   const m7 = useAppStore((s) => s.scenario.m7);
+  const fp = useAppStore((s) => s.scenario.formulaParams);
   const updateM6 = useAppStore((s) => s.updateM6);
 
-  const output = useMemo(() => computeAffordability(m6), [m6]);
+  const output = useMemo(() => computeAffordability(m6, fp), [m6, fp]);
   const affordabilityTrace = useMemo(() => traceAffordability(m6), [m6]);
 
   // Demand thresholds for reference lines (barrels/month)

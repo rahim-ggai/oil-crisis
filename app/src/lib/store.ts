@@ -2,7 +2,7 @@
 
 import { create } from 'zustand';
 import type {
-  ScenarioState, ActivePanel, BaselineMode, TriggerLevel,
+  ScenarioState, ActivePanel, BaselineMode, TriggerLevel, FormulaParams,
   M1State, M2State, M3State, M4State, M5State, M6State, M7State, M8State, Cargo, AlternateSource
 } from '@/types';
 import { DEFAULT_SCENARIO } from './defaults';
@@ -37,6 +37,9 @@ interface AppStore {
   // Alternate source operations
   updateSource: (id: string, partial: Partial<AlternateSource>) => void;
   toggleSource: (id: string) => void;
+
+  // Formula params
+  updateFormulaParams: (partial: Partial<FormulaParams>) => void;
 
   // Scenario management
   loadScenario: (scenario: ScenarioState) => void;
@@ -98,6 +101,10 @@ export const useAppStore = create<AppStore>((set, get) => ({
         sources: s.scenario.m4.sources.map((src) => src.id === id ? { ...src, activated: !src.activated } : src)
       }
     }
+  })),
+
+  updateFormulaParams: (partial) => set((s) => ({
+    scenario: { ...s.scenario, formulaParams: { ...s.scenario.formulaParams, ...partial } }
   })),
 
   loadScenario: (scenario) => set({ scenario }),

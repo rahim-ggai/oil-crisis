@@ -48,11 +48,12 @@ function fmt(n: number): string {
 export function M5Iran() {
   const m5 = useAppStore((s) => s.scenario.m5);
   const baselineMode = useAppStore((s) => s.scenario.baselineMode);
+  const fp = useAppStore((s) => s.scenario.formulaParams);
   const updateM5 = useAppStore((s) => s.updateM5);
 
   const output = useMemo(
-    () => computeIranCorridor(m5, baselineMode),
-    [m5, baselineMode]
+    () => computeIranCorridor(m5, baselineMode, fp),
+    [m5, baselineMode, fp]
   );
   const corridorTrace = useMemo(
     () => traceIranCorridor(m5, baselineMode),

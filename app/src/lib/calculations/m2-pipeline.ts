@@ -30,12 +30,11 @@ export function getCargoesArrivingInDays(cargoes: Cargo[], days: number): Cargo[
   return cargoes.filter((c) => new Date(c.eta) <= cutoff);
 }
 
-export function getPipelineStatusScore(cargoes: Cargo[], mode: BaselineMode): number {
+export function getPipelineStatusScore(cargoes: Cargo[], mode: BaselineMode, baseline: number = 3_000_000): number {
   if (cargoes.length === 0) return 0;
   const next30 = getCargoesArrivingInDays(cargoes, 30);
   const rwBarrels = getRiskWeightedBarrels(next30, mode);
-  // Normalize: 3M barrels expected = 100 (normal ~13 days of consumption at 423kbpd ≈ 5.5M, so 3M is baseline decent)
-  return Math.min(100, (rwBarrels / 3_000_000) * 100);
+  return Math.min(100, (rwBarrels / baseline) * 100);
 }
 
 // ============================================================

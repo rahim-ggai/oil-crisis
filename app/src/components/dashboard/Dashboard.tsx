@@ -53,13 +53,14 @@ function fmtInt(n: number): string {
 
 export function Dashboard() {
   const scenario = useAppStore((s) => s.scenario);
-  const { m1, m2, m5, m6, m7, m8 } = scenario;
+  const { m1, m2, m5, m6, m7, m8, formulaParams: fp } = scenario;
 
   const triggerOutput = useMemo(() => computeTrigger(scenario), [scenario]);
-  const iranOutput = useMemo(() => computeIranCorridor(m5, scenario.baselineMode), [m5, scenario.baselineMode]);
-  const affordability = useMemo(() => computeAffordability(m6), [m6]);
+  const iranOutput = useMemo(() => computeIranCorridor(m5, scenario.baselineMode, fp), [m5, scenario.baselineMode, fp]);
+  const affordability = useMemo(() => computeAffordability(m6, fp), [m6, fp]);
 
-  const weightedDaysOfCover = useMemo(() => getWeightedDaysOfCover(m1), [m1]);
+  const m1Weights = useMemo(() => ({ hsd: fp.m1_hsdWeight, ms: fp.m1_msWeight, fo: fp.m1_foWeight }), [fp]);
+  const weightedDaysOfCover = useMemo(() => getWeightedDaysOfCover(m1, undefined, m1Weights), [m1, m1Weights]);
   const hsdDays = useMemo(() => getDaysOfCover(m1.hsdStock, m1.hsdDailyConsumption), [m1]);
   const msDays = useMemo(() => getDaysOfCover(m1.msStock, m1.msDailyConsumption), [m1]);
   const foDays = useMemo(() => getDaysOfCover(m1.foStock, m1.foDailyConsumption), [m1]);

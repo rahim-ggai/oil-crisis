@@ -367,10 +367,11 @@ function TotalOutputSummary({ outputs }: { outputs: ReturnType<typeof computeAll
 export default function M3Refining() {
   const m3 = useAppStore((s) => s.scenario.m3);
   const foDailyConsumption = useAppStore((s) => s.scenario.m1.foDailyConsumption);
+  const fp = useAppStore((s) => s.scenario.formulaParams);
   const updateM3 = useAppStore((s) => s.updateM3);
 
   const allGrades = useMemo(() => Object.keys(m3.yieldMatrix), [m3.yieldMatrix]);
-  const outputs = useMemo(() => computeAllRefineryOutputs(m3, foDailyConsumption), [m3, foDailyConsumption]);
+  const outputs = useMemo(() => computeAllRefineryOutputs(m3, foDailyConsumption, fp), [m3, foDailyConsumption, fp]);
 
   return (
     <ModulePanel
