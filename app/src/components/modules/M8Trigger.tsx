@@ -393,6 +393,12 @@ export function M8Trigger() {
               stress={triggerOutput.compositeStress}
               level={triggerOutput.recommendedLevel}
             />
+            <div className="mt-2">
+              <InlineFormula trace={trace}>
+                <span className="text-xs text-slate">Composite stress: </span>
+                <span className="font-mono text-sm font-semibold text-navy">{triggerOutput.compositeStress.toFixed(1)}</span>
+              </InlineFormula>
+            </div>
           </Card>
 
           {/* Component Breakdown */}
