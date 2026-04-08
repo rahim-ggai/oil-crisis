@@ -9,3 +9,5 @@
 
 # Node (covered by app/.gitignore but also at root)
 node_modules/
+
+*.docx
