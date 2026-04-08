@@ -1,0 +1,11 @@
+# Claude Code
+.claude/
+
+# Large binary files
+*.pdf
+
+# OS
+.DS_Store
+
+# Node (covered by app/.gitignore but also at root)
+node_modules/
