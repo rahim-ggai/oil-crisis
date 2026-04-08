@@ -4,7 +4,8 @@ import { useMemo } from 'react';
 import { useAppStore } from '@/lib/store';
 import { ModulePanel, Card } from '@/components/ui/ModulePanel';
 import { InputField } from '@/components/ui/InputField';
-import { computeIranCorridor } from '@/lib/calculations/m5-iran';
+import { computeIranCorridor, traceIranCorridor } from '@/lib/calculations/m5-iran';
+import { InlineFormula } from '@/components/ui/FormulaBreakdown';
 import {
   BarChart,
   Bar,
@@ -51,6 +52,10 @@ export function M5Iran() {
 
   const output = useMemo(
     () => computeIranCorridor(m5, baselineMode),
+    [m5, baselineMode]
+  );
+  const corridorTrace = useMemo(
+    () => traceIranCorridor(m5, baselineMode),
     [m5, baselineMode]
   );
 
@@ -232,7 +237,9 @@ export function M5Iran() {
             <div className="grid grid-cols-3 gap-4">
               <div>
                 <p className="text-[10px] text-slate uppercase tracking-wide mb-1">Total Supply</p>
-                <p className="font-mono text-lg text-navy font-semibold">{fmt(output.totalBblDay)}</p>
+                <InlineFormula trace={corridorTrace}>
+                  <p className="font-mono text-lg text-navy font-semibold">{fmt(output.totalBblDay)}</p>
+                </InlineFormula>
                 <p className="text-[10px] text-slate">bbl/day</p>
               </div>
               <div>
@@ -242,11 +249,13 @@ export function M5Iran() {
               </div>
               <div>
                 <p className="text-[10px] text-slate uppercase tracking-wide mb-1">Corridor Score</p>
-                <p className={`font-mono text-lg font-semibold ${
-                  output.corridorScore > 60 ? 'text-navy' : output.corridorScore > 30 ? 'text-ochre' : 'text-red-muted'
-                }`}>
-                  {output.corridorScore.toFixed(1)}
-                </p>
+                <InlineFormula trace={corridorTrace}>
+                  <p className={`font-mono text-lg font-semibold ${
+                    output.corridorScore > 60 ? 'text-navy' : output.corridorScore > 30 ? 'text-ochre' : 'text-red-muted'
+                  }`}>
+                    {output.corridorScore.toFixed(1)}
+                  </p>
+                </InlineFormula>
                 <p className="text-[10px] text-slate">/ 100</p>
               </div>
             </div>

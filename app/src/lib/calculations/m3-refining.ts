@@ -1,4 +1,6 @@
 import type { Refinery, YieldProfile, M3State } from '@/types';
+import type { FormulaTrace } from './formula-trace';
+import { fmt, v } from './formula-trace';
 
 export interface RefineryOutput {
   refineryId: string;
@@ -79,6 +81,56 @@ export function computeAllRefineryOutputs(m3: M3State, foDailyConsumption: numbe
   return m3.refineries.map((r) =>
     computeRefineryOutput(r, m3.yieldMatrix, m3.foStorageDays, foDailyConsumption)
   );
+}
+
+// ============================================================
+// Formula Trace — Refinery Feasibility
+// ============================================================
+
+export function traceFeasibility(
+  refinery: Refinery,
+  yieldMatrix: Record<string, YieldProfile>
+): FormulaTrace {
+  const blend = getBlendedYield(refinery, yieldMatrix);
+  const foYield = blend.fo;
+  const feasibility = Math.max(0, Math.min(100, 100 * (55 - foYield) / 25));
+
+  const dietEntries = Object.entries(refinery.crudeDiet).filter(([, pct]) => pct > 0);
+  const dietDesc = dietEntries.map(([grade, pct]) => {
+    const y = yieldMatrix[grade];
+    return `${grade} ${pct}% (FO: ${y ? fmt(y.fo, 0) : '?'}%)`;
+  }).join(' + ');
+
+  return {
+    id: `m3-feasibility-${refinery.id}`,
+    title: `Feasibility Score: ${refinery.shortName}`,
+    finalResult: feasibility,
+    unit: 'pts (0-100)',
+    steps: [
+      {
+        label: 'Blended FO Yield',
+        formula: 'Σ(crudeGrade_pct × FO_yield) / 100' + (refinery.id === 'parco' ? ' - 5% (PARCO mild conversion)' : ''),
+        substituted: dietDesc + (refinery.id === 'parco' ? ' → FO adjusted -5%' : ''),
+        result: foYield,
+        unit: '%',
+        variables: dietEntries.map(([grade, pct]) =>
+          v(grade, `${grade} allocation`, pct, 'user-input', '%')
+        ),
+      },
+      {
+        label: 'Feasibility Score',
+        formula: 'max(0, min(100, 100 × (55 - FO%) / 25))',
+        substituted: `max(0, min(100, 100 × (55 - ${fmt(foYield)}) / 25))`,
+        result: feasibility,
+        unit: 'pts',
+        variables: [
+          v('FO%', 'Blended FO yield', foYield, 'computed', '%'),
+          v('55', 'FO threshold (infeasible)', 55, 'constant', '%'),
+          v('25', 'Score range denominator', 25, 'constant'),
+        ],
+      },
+    ],
+  };
 }
 
 export function getTotalDailyOutput(outputs: RefineryOutput[]) {

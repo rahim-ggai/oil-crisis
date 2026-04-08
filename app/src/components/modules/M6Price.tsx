@@ -4,7 +4,8 @@ import { useMemo } from 'react';
 import { useAppStore } from '@/lib/store';
 import { ModulePanel, Card } from '@/components/ui/ModulePanel';
 import { InputField } from '@/components/ui/InputField';
-import { computeAffordability } from '@/lib/calculations/m6-price';
+import { computeAffordability, traceAffordability } from '@/lib/calculations/m6-price';
+import { InlineFormula } from '@/components/ui/FormulaBreakdown';
 import {
   LineChart,
   Line,
@@ -44,6 +45,7 @@ export function M6Price() {
   const updateM6 = useAppStore((s) => s.updateM6);
 
   const output = useMemo(() => computeAffordability(m6), [m6]);
+  const affordabilityTrace = useMemo(() => traceAffordability(m6), [m6]);
 
   // Demand thresholds for reference lines (barrels/month)
   const demandThresholds = useMemo(() => {
@@ -213,12 +215,16 @@ export function M6Price() {
             <div className="grid grid-cols-3 gap-4">
               <div>
                 <p className="text-[10px] text-slate uppercase tracking-wide mb-1">Max Monthly Spend</p>
-                <p className="font-mono text-lg text-navy font-semibold">${fmtB(output.maxMonthlyExpenditure)}</p>
+                <InlineFormula trace={affordabilityTrace}>
+                  <p className="font-mono text-lg text-navy font-semibold">${fmtB(output.maxMonthlyExpenditure)}</p>
+                </InlineFormula>
                 <p className="text-[10px] text-slate">{fmtPKR(output.maxMonthlyExpenditure, m6.exchangeRate)}</p>
               </div>
               <div>
                 <p className="text-[10px] text-slate uppercase tracking-wide mb-1">Affordable Barrels</p>
-                <p className="font-mono text-lg text-navy font-semibold">{fmtBbl(output.affordableBarrels)}</p>
+                <InlineFormula trace={affordabilityTrace}>
+                  <p className="font-mono text-lg text-navy font-semibold">{fmtBbl(output.affordableBarrels)}</p>
+                </InlineFormula>
                 <p className="text-[10px] text-slate">per month</p>
               </div>
               <div>

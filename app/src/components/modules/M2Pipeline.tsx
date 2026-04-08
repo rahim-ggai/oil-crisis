@@ -3,7 +3,8 @@
 import { useMemo, useCallback } from 'react';
 import { useAppStore } from '@/lib/store';
 import { ModulePanel, Card } from '@/components/ui/ModulePanel';
-import { getRiskWeightedBarrels } from '@/lib/calculations/m2-pipeline';
+import { getRiskWeightedBarrels, traceRiskWeightedBarrels } from '@/lib/calculations/m2-pipeline';
+import { InlineFormula } from '@/components/ui/FormulaBreakdown';
 import { DEFAULT_LOSS_PROBABILITIES } from '@/lib/defaults';
 import type { Cargo, CargoStatus } from '@/types';
 import {
@@ -84,6 +85,10 @@ export function M2Pipeline() {
     () => getRiskWeightedBarrels(cargoes, baselineMode),
     [cargoes, baselineMode]
   );
+  const rwTrace = useMemo(
+    () => traceRiskWeightedBarrels(cargoes, baselineMode),
+    [cargoes, baselineMode]
+  );
 
   const riskAdjustedDaysCover = useMemo(() => {
     if (m1.totalPetroleumConsumption <= 0) return 0;
@@ -125,10 +130,14 @@ export function M2Pipeline() {
           </div>
         </Card>
         <Card>
-          <div className="text-xs text-slate mb-1">Risk-Weighted Barrels</div>
-          <div className="font-mono text-lg text-navy font-semibold">
-            {Math.round(riskWeightedBarrels).toLocaleString()}
-          </div>
+          <InlineFormula trace={rwTrace}>
+            <div>
+              <div className="text-xs text-slate mb-1">Risk-Weighted Barrels</div>
+              <div className="font-mono text-lg text-navy font-semibold">
+                {Math.round(riskWeightedBarrels).toLocaleString()}
+              </div>
+            </div>
+          </InlineFormula>
         </Card>
         <Card>
           <div className="text-xs text-slate mb-1">Risk-Adjusted Days of Cover Added</div>

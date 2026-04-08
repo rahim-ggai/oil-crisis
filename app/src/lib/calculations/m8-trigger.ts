@@ -2,6 +2,8 @@ import type { TriggerLevel, ScenarioState } from '@/types';
 import { getWeightedDaysOfCover, getDaysOfCover } from './m1-inventory';
 import { getPipelineStatusScore } from './m2-pipeline';
 import { computeIranCorridor } from './m5-iran';
+import type { FormulaTrace } from './formula-trace';
+import { fmt, v } from './formula-trace';
 
 export interface TriggerOutput {
   compositeStress: number;
@@ -104,5 +106,124 @@ export function computeTrigger(scenario: ScenarioState): TriggerOutput {
     recommendedLevel,
     components: { stressD, stressP, stressS, bufferA, bufferI },
     hardOverrideActive,
+  };
+}
+
+// ============================================================
+// Formula Trace — Composite Stress Index
+// ============================================================
+
+export function traceTrigger(scenario: ScenarioState): FormulaTrace {
+  const result = computeTrigger(scenario);
+  const { m1, m6, m8 } = scenario;
+  const w = m8.weights;
+
+  // Re-derive intermediate values for the trace
+  const D = getWeightedDaysOfCover(m1);
+  const P = m6.currentBrentSpot / m6.preCrisisBrent;
+  const S = getPipelineStatusScore(scenario.m2.cargoes, scenario.baselineMode);
+  const activeSources = scenario.m4.sources.filter((s) => s.activated);
+  const totalLiftable = activeSources.reduce((s, a) => s + a.maxLiftableKbblMonth, 0);
+  const A = Math.min(100, (totalLiftable / 10_000) * 100);
+  const iranOutput = computeIranCorridor(scenario.m5, scenario.baselineMode);
+  const I = iranOutput.corridorScore;
+
+  const { stressD, stressP, stressS, bufferA, bufferI } = result.components;
+
+  // Sub-step: stress_D normalization
+  const stepStressD = {
+    label: 'stress_D',
+    formula: 'max(0, min(100, 100 \u00d7 (30 - D) / 30))',
+    substituted: `max(0, min(100, 100 \u00d7 (30 - ${fmt(D)}) / 30))`,
+    result: stressD,
+    unit: 'pts',
+    variables: [
+      v('D', 'Weighted Days of Cover', D, 'computed', 'days', 'm1'),
+    ],
+  };
+
+  // Sub-step: stress_P normalization
+  const stepStressP = {
+    label: 'stress_P',
+    formula: 'max(0, min(100, 100 \u00d7 (P - 1) / 4))',
+    substituted: `max(0, min(100, 100 \u00d7 (${fmt(P, 2)} - 1) / 4))`,
+    result: stressP,
+    unit: 'pts',
+    variables: [
+      v('P', 'Brent Price Ratio (spot / baseline)', P, 'computed', '\u00d7', 'm6'),
+    ],
+  };
+
+  // Sub-step: stress_S normalization
+  const stepStressS = {
+    label: 'stress_S',
+    formula: '100 - S',
+    substituted: `100 - ${fmt(S)}`,
+    result: stressS,
+    unit: 'pts',
+    variables: [
+      v('S', 'Pipeline Status Score', S, 'computed', 'pts', 'm2'),
+    ],
+  };
+
+  // Sub-step: buffer_A
+  const stepBufferA = {
+    label: 'buffer_A',
+    formula: 'Alternate Activation Score',
+    substituted: fmt(bufferA),
+    result: bufferA,
+    unit: 'pts',
+    variables: [
+      v('A', 'Alternate Activation Score', A, 'computed', 'pts', 'm4'),
+    ],
+  };
+
+  // Sub-step: buffer_I
+  const stepBufferI = {
+    label: 'buffer_I',
+    formula: 'Iran Corridor Score',
+    substituted: fmt(bufferI),
+    result: bufferI,
+    unit: 'pts',
+    variables: [
+      v('I', 'Iran Corridor Score', I, 'computed', 'pts', 'm5'),
+    ],
+  };
+
+  // Main composite stress step
+  const compositeStep = {
+    label: 'Composite Stress',
+    formula: 'wD\u00d7stress_D + wP\u00d7stress_P + wS\u00d7stress_S - wA\u00d7buffer_A\u00d70.5 - wI\u00d7buffer_I\u00d70.5',
+    substituted: `${fmt(w.wD, 2)}\u00d7${fmt(stressD)} + ${fmt(w.wP, 2)}\u00d7${fmt(stressP)} + ${fmt(w.wS, 2)}\u00d7${fmt(stressS)} - ${fmt(w.wA, 2)}\u00d7${fmt(bufferA)}\u00d70.5 - ${fmt(w.wI, 2)}\u00d7${fmt(bufferI)}\u00d70.5`,
+    result: result.compositeStress,
+    unit: 'pts',
+    variables: [
+      v('wD', 'Weight: Days of Cover', w.wD, 'user-input'),
+      v('wP', 'Weight: Price Stress', w.wP, 'user-input'),
+      v('wS', 'Weight: Pipeline Risk', w.wS, 'user-input'),
+      v('wA', 'Weight: Alternates Buffer', w.wA, 'user-input'),
+      v('wI', 'Weight: Iran Corridor Buffer', w.wI, 'user-input'),
+      v('stress_D', 'Days of Cover Stress', stressD, 'computed', 'pts', 'm1'),
+      v('stress_P', 'Price Stress', stressP, 'computed', 'pts', 'm6'),
+      v('stress_S', 'Pipeline Risk Stress', stressS, 'computed', 'pts', 'm2'),
+      v('buffer_A', 'Alternate Sources Buffer', bufferA, 'computed', 'pts', 'm4'),
+      v('buffer_I', 'Iran Corridor Buffer', bufferI, 'computed', 'pts', 'm5'),
+      v('0.5', 'Buffer discount factor', 0.5, 'constant'),
+    ],
+  };
+
+  return {
+    id: 'm8-composite-stress',
+    title: 'Composite Stress Index',
+    finalResult: result.compositeStress,
+    unit: 'pts',
+    steps: [
+      compositeStep,
+      stepStressD,
+      stepStressP,
+      stepStressS,
+      stepBufferA,
+      stepBufferI,
+    ],
   };
 }

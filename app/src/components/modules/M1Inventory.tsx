@@ -8,7 +8,9 @@ import {
   getDaysOfCover,
   computeDepletionCurve,
   getReductionForLevel,
+  traceWeightedDaysOfCover,
 } from '@/lib/calculations/m1-inventory';
+import { InlineFormula } from '@/components/ui/FormulaBreakdown';
 import type { ConservationLevel, DemandReduction } from '@/types';
 import {
   LineChart,
@@ -230,6 +232,14 @@ export function M1Inventory() {
                   ))}
                 </tbody>
               </table>
+            </div>
+            <div className="mt-3 pt-2 border-t border-border/50">
+              <InlineFormula trace={traceWeightedDaysOfCover(m1)}>
+                <span className="text-xs text-slate">Weighted Days of Cover: </span>
+                <span className="font-mono text-sm font-semibold text-navy">
+                  {(0.5 * getDaysOfCover(m1.hsdStock, m1.hsdDailyConsumption) + 0.35 * getDaysOfCover(m1.msStock, m1.msDailyConsumption) + 0.15 * getDaysOfCover(m1.foStock, m1.foDailyConsumption)).toFixed(1)} days
+                </span>
+              </InlineFormula>
             </div>
           </Card>
 

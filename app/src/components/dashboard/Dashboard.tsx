@@ -8,11 +8,13 @@ import {
   getDaysOfCover,
   computeDepletionCurve,
   getReductionForLevel,
+  traceWeightedDaysOfCover,
 } from '@/lib/calculations/m1-inventory';
-import { getRiskWeightedBarrels } from '@/lib/calculations/m2-pipeline';
-import { computeIranCorridor } from '@/lib/calculations/m5-iran';
-import { computeAffordability } from '@/lib/calculations/m6-price';
-import { computeTrigger } from '@/lib/calculations/m8-trigger';
+import { getRiskWeightedBarrels, traceRiskWeightedBarrels } from '@/lib/calculations/m2-pipeline';
+import { computeIranCorridor, traceIranCorridor } from '@/lib/calculations/m5-iran';
+import { computeAffordability, traceAffordability } from '@/lib/calculations/m6-price';
+import { computeTrigger, traceTrigger } from '@/lib/calculations/m8-trigger';
+import { InlineFormula } from '@/components/ui/FormulaBreakdown';
 import type { ConservationLevel, DemandReduction, TriggerLevel } from '@/types';
 import {
   LineChart,
@@ -126,10 +128,12 @@ export function Dashboard() {
         {/* 1. Days of Fuel Cover */}
         <Card>
           <p className="text-xs font-medium text-slate uppercase tracking-wide mb-2">Days of Fuel Cover</p>
-          <p className="font-mono text-4xl font-semibold text-navy leading-none mb-2">
-            {fmt(weightedDaysOfCover, 0)}
-          </p>
-          <p className="text-xs text-slate">Weighted average (HSD/MS/FO)</p>
+          <InlineFormula trace={traceWeightedDaysOfCover(m1)}>
+            <p className="font-mono text-4xl font-semibold text-navy leading-none">
+              {fmt(weightedDaysOfCover, 0)}
+            </p>
+          </InlineFormula>
+          <p className="text-xs text-slate mt-2">Weighted average (HSD/MS/FO)</p>
           <div className="mt-3 grid grid-cols-3 gap-2 text-xs">
             <div>
               <span className="text-slate">HSD</span>
@@ -184,9 +188,13 @@ export function Dashboard() {
             </span>
           </div>
           <div className="mt-1 text-xs">
-            <span className="text-slate">Composite stress:</span>
-            <span className="font-mono font-medium text-navy ml-1">{fmt(triggerOutput.compositeStress, 1)}</span>
-            <span className="text-slate">/100</span>
+            <InlineFormula trace={traceTrigger(scenario)}>
+              <span>
+                <span className="text-slate">Composite stress:</span>
+                <span className="font-mono font-medium text-navy ml-1">{fmt(triggerOutput.compositeStress, 1)}</span>
+                <span className="text-slate">/100</span>
+              </span>
+            </InlineFormula>
           </div>
           {triggerOutput.hardOverrideActive && (
             <p className="mt-2 text-[10px] text-red-muted leading-tight">{triggerOutput.hardOverrideActive}</p>
@@ -206,17 +214,23 @@ export function Dashboard() {
             <div><span className="text-slate">Not dispatched:</span> <span className="font-mono font-medium">{cargoStatusBuckets.contracted_not_dispatched}</span></div>
           </div>
           <div className="mt-2 text-xs">
-            <span className="text-slate">Risk-weighted volume:</span>
-            <span className="font-mono font-medium text-navy ml-1">{fmtInt(rwBarrels)} bbl</span>
+            <InlineFormula trace={traceRiskWeightedBarrels(m2.cargoes, scenario.baselineMode)}>
+              <span>
+                <span className="text-slate">Risk-weighted volume:</span>
+                <span className="font-mono font-medium text-navy ml-1">{fmtInt(rwBarrels)} bbl</span>
+              </span>
+            </InlineFormula>
           </div>
         </Card>
 
         {/* 6. Iranian Corridor Status */}
         <Card>
           <p className="text-xs font-medium text-slate uppercase tracking-wide mb-2">Iranian Corridor</p>
-          <p className={`text-2xl font-semibold leading-none mb-2 ${iranStatusColor}`}>
-            {iranStatus}
-          </p>
+          <InlineFormula trace={traceIranCorridor(m5, scenario.baselineMode)}>
+            <p className={`text-2xl font-semibold leading-none ${iranStatusColor}`}>
+              {iranStatus}
+            </p>
+          </InlineFormula>
           <p className="text-xs text-slate mb-3">Score: <span className="font-mono font-medium">{fmt(iranOutput.corridorScore, 0)}</span>/100</p>
           <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
             <div>

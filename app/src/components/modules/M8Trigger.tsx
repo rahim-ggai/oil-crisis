@@ -4,7 +4,8 @@ import { useMemo, useCallback } from 'react';
 import { useAppStore } from '@/lib/store';
 import { ModulePanel, Card } from '@/components/ui/ModulePanel';
 import { InputField } from '@/components/ui/InputField';
-import { computeTrigger } from '@/lib/calculations/m8-trigger';
+import { computeTrigger, traceTrigger } from '@/lib/calculations/m8-trigger';
+import { InlineFormula } from '@/components/ui/FormulaBreakdown';
 import type { TriggerLevel, TriggerWeights } from '@/types';
 import {
   BarChart,
@@ -242,6 +243,7 @@ export function M8Trigger() {
   const m8 = scenario.m8;
 
   const triggerOutput = useMemo(() => computeTrigger(scenario), [scenario]);
+  const trace = useMemo(() => traceTrigger(scenario), [scenario]);
 
   const weightSum = useMemo(
     () => Object.values(m8.weights).reduce((a, b) => a + b, 0),

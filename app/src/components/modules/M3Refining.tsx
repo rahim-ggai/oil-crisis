@@ -4,7 +4,8 @@ import { useMemo, useCallback } from 'react';
 import { useAppStore } from '@/lib/store';
 import { ModulePanel, Card } from '@/components/ui/ModulePanel';
 import { InputField } from '@/components/ui/InputField';
-import { computeAllRefineryOutputs, getTotalDailyOutput } from '@/lib/calculations/m3-refining';
+import { computeAllRefineryOutputs, getTotalDailyOutput, traceFeasibility } from '@/lib/calculations/m3-refining';
+import { InlineFormula } from '@/components/ui/FormulaBreakdown';
 import type { Refinery, YieldProfile } from '@/types';
 import {
   Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
@@ -107,10 +108,12 @@ function RefineryCard({
   refinery,
   allGrades,
   output,
+  yieldMatrix,
 }: {
   refinery: Refinery;
   allGrades: string[];
   output: ReturnType<typeof computeAllRefineryOutputs>[number];
+  yieldMatrix: Record<string, YieldProfile>;
 }) {
   const updateM3 = useAppStore((s) => s.updateM3);
   const refineries = useAppStore((s) => s.scenario.m3.refineries);
@@ -139,6 +142,11 @@ function RefineryCard({
     [updateM3, refineries, refinery.id]
   );
 
+  const feasTrace = useMemo(
+    () => traceFeasibility(refinery, yieldMatrix),
+    [refinery, yieldMatrix]
+  );
+
   const feasColor =
     output.feasibilityScore >= 70 ? 'text-green-700' :
     output.feasibilityScore >= 40 ? 'text-amber-600' :
@@ -153,9 +161,11 @@ function RefineryCard({
         </div>
         <div className="text-right">
           <span className="font-mono text-xs text-navy">{fmt(refinery.capacityBpd)} bpd</span>
-          <div className={`text-[10px] font-semibold ${feasColor}`}>
-            Feasibility: {output.feasibilityScore.toFixed(0)}
-          </div>
+          <InlineFormula trace={feasTrace}>
+            <span className={`text-[10px] font-semibold ${feasColor}`}>
+              Feasibility: {output.feasibilityScore.toFixed(0)}
+            </span>
+          </InlineFormula>
         </div>
       </div>
 
@@ -404,6 +414,7 @@ export default function M3Refining() {
             refinery={refinery}
             allGrades={allGrades}
             output={outputs[idx]}
+            yieldMatrix={m3.yieldMatrix}
           />
         ))}
       </div>
