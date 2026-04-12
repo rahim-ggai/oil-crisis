@@ -1,9 +1,11 @@
 'use client';
 
-import { useMemo, useRef, useState } from 'react';
+import { useMemo, useRef, useState, useEffect } from 'react';
 import { useAppStore } from '@/lib/store';
 import { Card } from '@/components/ui/ModulePanel';
 import { readExcelFile, parseDSSP, parseTankerPlan } from '@/lib/excel-import';
+import { computeImportRecommendation, traceImportRecommendation } from '@/lib/calculations/import-recommendation';
+import type { ImportRecommendationParams } from '@/lib/calculations/import-recommendation';
 import {
   getWeightedDaysOfCover,
   getDaysOfCover,
@@ -157,6 +159,43 @@ export function Dashboard() {
     }));
   }, [m1, m7Reductions]);
 
+  // ── Import Recommendation ──
+  // Convert M1 stocks (tonnes) to barrels for total stock estimate
+  // HSD: ~7.46 bbl/MT, MS: ~8.5 bbl/MT, FO: ~6.35 bbl/MT
+  const currentStockBarrels = useMemo(() =>
+    m1.hsdStock * 7.46 + m1.msStock * 8.5 + m1.foStock * 6.35 + m1.crudeOilStock,
+  [m1]);
+
+  // Local editable constraint state (initialized from store, analyst can tweak)
+  const [irSbp, setIrSbp] = useState(m6.sbpReserves);
+  const [irFloor, setIrFloor] = useState(m6.reservesFloor);
+  const [irLockdown, setIrLockdown] = useState(2);
+  const [irWarMonths, setIrWarMonths] = useState(fp.m6_warDurationMonths);
+  const [irBrent, setIrBrent] = useState(m6.currentBrentSpot);
+
+  // Sync from store when store values change
+  useEffect(() => { setIrSbp(m6.sbpReserves); }, [m6.sbpReserves]);
+  useEffect(() => { setIrBrent(m6.currentBrentSpot); }, [m6.currentBrentSpot]);
+
+  const irParams: ImportRecommendationParams = useMemo(() => ({
+    sbpReserves: irSbp,
+    reservesFloor: irFloor,
+    imfAvailable: m6.imfAvailable,
+    saudiFacility: m6.saudiDoubled ? m6.saudiDeferredFacility * 2 : m6.saudiDeferredFacility,
+    chinaSwap: m6.chinaSwapLine,
+    barter: m6.barterCapacity,
+    brentSpot: irBrent,
+    productPremium: fp.m6_productPremium,
+    freightPremium: fp.m6_freightPremium,
+    warDurationMonths: irWarMonths,
+    normalDemandBpd: fp.m6_normalDemandBpd,
+    maxLockdownDays: irLockdown,
+    currentStockBarrels,
+  }), [irSbp, irFloor, irLockdown, irWarMonths, irBrent, m6, fp, currentStockBarrels]);
+
+  const irResult = useMemo(() => computeImportRecommendation(irParams), [irParams]);
+  const irTrace = useMemo(() => traceImportRecommendation(irParams), [irParams]);
+
   return (
     <div className="space-y-6">
       {/* Import Data Bar */}
@@ -304,6 +343,90 @@ export function Dashboard() {
           </div>
         </Card>
       </div>
+
+      {/* Oil Import Recommendation */}
+      <Card title="Oil Import Recommendation">
+        <p className="text-xs text-slate mb-4">
+          How much oil should Pakistan import per month? Bounded by financial capacity (upper) and minimum operational demand to limit commercial lockdowns (lower).
+        </p>
+
+        {/* Editable constraints */}
+        <div className="grid grid-cols-5 gap-3 mb-4">
+          <div>
+            <label className="text-[10px] text-slate block mb-0.5">SBP Reserves ($B)</label>
+            <input type="number" value={irSbp} onChange={(e) => setIrSbp(parseFloat(e.target.value) || 0)} step={0.1} className="w-full font-mono text-sm bg-input-bg border border-border rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-navy" />
+          </div>
+          <div>
+            <label className="text-[10px] text-slate block mb-0.5">Reserve Floor ($B)</label>
+            <input type="number" value={irFloor} onChange={(e) => setIrFloor(parseFloat(e.target.value) || 0)} step={0.5} className="w-full font-mono text-sm bg-input-bg border border-border rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-navy" />
+          </div>
+          <div>
+            <label className="text-[10px] text-slate block mb-0.5">Max Lockdown Days/Week</label>
+            <input type="number" value={irLockdown} onChange={(e) => setIrLockdown(parseFloat(e.target.value) || 0)} step={1} min={0} max={7} className="w-full font-mono text-sm bg-input-bg border border-border rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-navy" />
+          </div>
+          <div>
+            <label className="text-[10px] text-slate block mb-0.5">War Duration (months)</label>
+            <input type="number" value={irWarMonths} onChange={(e) => setIrWarMonths(parseFloat(e.target.value) || 1)} step={1} min={1} className="w-full font-mono text-sm bg-input-bg border border-border rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-navy" />
+          </div>
+          <div>
+            <label className="text-[10px] text-slate block mb-0.5">Brent Physical ($/bbl)</label>
+            <input type="number" value={irBrent} onChange={(e) => setIrBrent(parseFloat(e.target.value) || 0)} step={1} className="w-full font-mono text-sm bg-input-bg border border-border rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-navy" />
+          </div>
+        </div>
+
+        {/* Three result cards */}
+        <div className="grid grid-cols-3 gap-4 mb-4">
+          <div className="bg-input-bg border border-border rounded-lg p-3">
+            <p className="text-[10px] text-slate uppercase tracking-wide mb-1">Upper Bound (Financial)</p>
+            <p className="font-mono text-2xl font-semibold text-navy">{fmtInt(Math.round(irResult.upperBound / 1000))}k</p>
+            <p className="text-[10px] text-slate">bbl/month — max affordable</p>
+            <div className="mt-2 text-[10px] text-slate space-y-0.5">
+              <div>Funding: <span className="font-mono text-navy">${fmt(irResult.totalFunding, 2)}B</span></div>
+              <div>Monthly budget: <span className="font-mono text-navy">${fmt(irResult.monthlyBudget, 2)}B</span></div>
+              <div>Cost/bbl: <span className="font-mono text-navy">${fmt(irResult.perBarrelCost, 0)}</span></div>
+            </div>
+          </div>
+
+          <div className="bg-input-bg border border-border rounded-lg p-3">
+            <p className="text-[10px] text-slate uppercase tracking-wide mb-1">Lower Bound (Operational)</p>
+            <p className="font-mono text-2xl font-semibold text-navy">{fmtInt(Math.round(irResult.lowerBound / 1000))}k</p>
+            <p className="text-[10px] text-slate">bbl/month — min to avoid &gt;{irLockdown}d lockdown</p>
+            <div className="mt-2 text-[10px] text-slate space-y-0.5">
+              <div>Operating: <span className="font-mono text-navy">{(irResult.operatingFraction * 100).toFixed(0)}%</span> of week ({7 - irLockdown}d/7d)</div>
+              <div>Reduced demand: <span className="font-mono text-navy">{fmtInt(Math.round(irResult.reducedDailyDemand))} bbl/d</span></div>
+              <div>Stock offset: <span className="font-mono text-navy">{fmtInt(Math.round(irResult.stockCoverPerMonth))} bbl/mo</span></div>
+            </div>
+          </div>
+
+          <div className={`border rounded-lg p-3 ${irResult.feasible ? 'bg-green-muted/5 border-green-muted/30' : 'bg-red-muted/5 border-red-muted/30'}`}>
+            <p className="text-[10px] text-slate uppercase tracking-wide mb-1">Recommendation</p>
+            <p className={`font-mono text-2xl font-semibold ${irResult.feasible ? 'text-green-muted' : 'text-red-muted'}`}>
+              {fmtInt(Math.round(irResult.recommended / 1000))}k
+            </p>
+            <p className="text-[10px] text-slate">bbl/month</p>
+            <div className={`mt-2 inline-block px-2 py-0.5 rounded text-[10px] font-semibold ${irResult.feasible ? 'bg-green-muted/15 text-green-muted' : 'bg-red-muted/15 text-red-muted'}`}>
+              {irResult.feasible ? 'FEASIBLE' : 'DEFICIT'}
+              {irResult.feasible
+                ? ` (+${irResult.surplusOrDeficitPct.toFixed(0)}% headroom)`
+                : ` (${fmtInt(Math.round(irResult.deficit))} bbl shortfall)`
+              }
+            </div>
+          </div>
+        </div>
+
+        {/* Reasoning */}
+        <div className="bg-input-bg border border-border rounded p-3 text-xs text-foreground leading-relaxed">
+          <span className="font-semibold text-navy">Reasoning: </span>
+          {irResult.reasoning}
+        </div>
+
+        {/* Formula breakdown */}
+        <div className="mt-2">
+          <InlineFormula trace={irTrace}>
+            <span className="text-xs text-slate">Show formula</span>
+          </InlineFormula>
+        </div>
+      </Card>
 
       {/* Depletion Curves Chart */}
       <Card title="90-Day Depletion Curves by Conservation Level">
