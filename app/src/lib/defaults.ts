@@ -8,16 +8,16 @@ import type {
 // Module 1 — Domestic Fuel Inventory Defaults
 // ============================================================
 export const DEFAULT_M1: M1State = {
-  crudeOilStock: 4_650_000, // barrels (~11 days)
-  hsdStock: 600_000, // tonnes (~23 days)
-  msStock: 540_000, // tonnes (~27 days)
-  foStock: 350_000, // tonnes
-  lpgStock: 45_000, // tonnes (~9 days)
-  jp1Stock: 110_000, // tonnes (~14 days)
-  hsdDailyConsumption: 26_000, // tonnes/day
-  msDailyConsumption: 20_000, // tonnes/day
-  foDailyConsumption: 8_000, // tonnes/day
-  totalPetroleumConsumption: 423_000, // barrels/day
+  crudeOilStock: 3_105_532, // barrels (423,674 MT × 7.33 bbl/MT, DSSP 08-Apr-2026)
+  hsdStock: 333_906, // tonnes (17.54 days cover, DSSP 08-Apr-2026)
+  msStock: 393_483, // tonnes (18.19 days cover, DSSP 08-Apr-2026)
+  foStock: 238_053, // tonnes (HSFO+LSFO+RFO combined, DSSP 08-Apr-2026)
+  lpgStock: 45_000, // tonnes (~9 days, Senate briefing — not in DSSP)
+  jp1Stock: 31_431, // tonnes (15.16 days cover, DSSP 08-Apr-2026)
+  hsdDailyConsumption: 19_040, // tonnes/day (actual MTD avg sales, DSSP 08-Apr-2026)
+  msDailyConsumption: 21_634, // tonnes/day (actual MTD avg sales, DSSP 08-Apr-2026)
+  foDailyConsumption: 2_828, // tonnes/day (238,053 MT / 84.18 days cover, DSSP 08-Apr-2026)
+  totalPetroleumConsumption: 423_000, // barrels/day (CEIC Dec 2024)
 };
 
 // ============================================================
@@ -271,15 +271,15 @@ export const DEFAULT_SCENARIO: ScenarioState = {
 // Source tooltips for every default value
 // ============================================================
 export const SOURCE_TOOLTIPS: Record<string, { source: string; date: string; assumption?: boolean; verify?: boolean; reasoning?: string }> = {
-  'crudeOilStock': { source: 'Senate Petroleum Committee briefing', date: 'March 2026', reasoning: '~11 days cover at 423 kbpd refinery share' },
-  'hsdStock': { source: 'Finance Committee briefing', date: 'Late March 2026', reasoning: '~23 days cover' },
-  'msStock': { source: 'Senate Petroleum Committee briefing', date: 'March 2026', reasoning: '~27 days cover' },
-  'foStock': { source: 'Estimated from refinery output residuals', date: 'March 2026', assumption: true, reasoning: 'FO demand collapsed post-2017 LNG shift' },
-  'lpgStock': { source: 'Senate Petroleum Committee briefing', date: 'March 2026', reasoning: '~9 days cover' },
-  'jp1Stock': { source: 'Senate Petroleum Committee briefing', date: 'March 2026', reasoning: '~14 days cover' },
-  'hsdDailyConsumption': { source: 'Pakistan Oil Report / OCAC', date: 'Pre-crisis', verify: true },
-  'msDailyConsumption': { source: 'Pakistan Oil Report / OCAC', date: 'Pre-crisis', verify: true },
-  'foDailyConsumption': { source: 'OCAC', date: 'Pre-crisis', assumption: true, reasoning: 'Post-LNG shift estimate' },
+  'crudeOilStock': { source: 'OCAC DSSP — Refinery Stocks sheet', date: '08-Apr-2026', reasoning: '423,674 MT × 7.33 bbl/MT; 7.04 days cover across all refineries' },
+  'hsdStock': { source: 'OCAC DSSP — HSD sheet total', date: '08-Apr-2026', reasoning: '333,906 MT = 17.54 days cover at 19,040 MT/day' },
+  'msStock': { source: 'OCAC DSSP — MS sheet total', date: '08-Apr-2026', reasoning: '393,483 MT = 18.19 days cover at 21,634 MT/day' },
+  'foStock': { source: 'OCAC DSSP — SUMMARY (HSFO+LSFO+RFO)', date: '08-Apr-2026', reasoning: '238,053 MT combined = 84.18 days cover' },
+  'lpgStock': { source: 'Senate Petroleum Committee briefing', date: 'March 2026', reasoning: '~9 days cover — not tracked in DSSP' },
+  'jp1Stock': { source: 'OCAC DSSP — SUMMARY', date: '08-Apr-2026', reasoning: '31,431 MT = 15.16 days cover' },
+  'hsdDailyConsumption': { source: 'OCAC DSSP — HSD sheet avg daily sales', date: '08-Apr-2026' },
+  'msDailyConsumption': { source: 'OCAC DSSP — MS sheet avg daily sales', date: '08-Apr-2026' },
+  'foDailyConsumption': { source: 'OCAC DSSP — derived from stock/days cover', date: '08-Apr-2026', reasoning: '238,053 MT / 84.18 days = 2,828 MT/day' },
   'totalPetroleumConsumption': { source: 'CEIC', date: 'Dec 2024' },
   'preCrisisBrent': { source: 'ICE Brent Futures', date: '27 Feb 2026' },
   'currentBrentSpot': { source: 'Market data', date: 'April 2026', verify: true },
