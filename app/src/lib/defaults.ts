@@ -108,9 +108,9 @@ export const DEFAULT_M4: M4State = {
 // Module 5 — Iran-Specific Supply Corridors Defaults
 // ============================================================
 export const DEFAULT_M5: M5State = {
-  bandarAbbasCapacity: 200_000,
-  khargIslandCapacity: 500_000,
-  chineseFlaggedVessels: 8,
+  bandarAbbasCapacity: 200_000, // bbl/day [ASSUMPTION]
+  khargIslandCapacity: 350_000, // reduced from 500k — Ras Laffan/Kharg damage uncertain, conservative estimate
+  chineseFlaggedVessels: 8, // [ASSUMPTION]; Iran permitting China/Russia/Pakistan/India flagged vessels
   vesselTurnaroundDays: 6,
   discountToBrent: 0.25,
   paymentMechanism: 'CNY through central holding entity',
@@ -124,19 +124,19 @@ export const DEFAULT_M5: M5State = {
 // Module 6 — Price-Linked Procurement Defaults
 // ============================================================
 export const DEFAULT_M6: M6State = {
-  preCrisisBrent: 71,
-  currentBrentSpot: 112,
-  brentMultiplier: 1.58,
-  sbpReserves: 16.4,
+  preCrisisBrent: 71, // ICE Brent Futures, 27 Feb 2026
+  currentBrentSpot: 132, // Dated Brent physical $131.97 (CNBC 10-Apr-2026); futures ~$97 but physical reflects actual procurement cost
+  brentMultiplier: 1.86, // 132/71 = 1.86
+  sbpReserves: 15.0, // $16.4B as of 3-Apr-2026 minus $1.4B Eurobond repayment on 8-Apr (ProPakistani)
   reservesFloor: 10,
-  imfAvailable: 1.0,
-  saudiDeferredFacility: 1.2,
-  saudiDoubled: false,
-  uaeDeposits: 0,
-  chinaSwapLine: 4.0,
+  imfAvailable: 1.21, // 3rd EFF review + 2nd RSF staff-level agreement, Mar 27 2026 (IMF.org)
+  saudiDeferredFacility: 1.2, // Current facility; Pakistan requested expansion to $5B (Geo News Mar 9)
+  saudiDoubled: false, // Expansion requested but not confirmed
+  uaeDeposits: 0, // Repaid $3B in 2024, no new deposits
+  chinaSwapLine: 3.0, // CNY 20B (~$3B); reduced from $4B assumption (SBP/PBOC data)
   barterCapacity: 500,
   normalMonthlyImportBill: 1.4,
-  exchangeRate: 280,
+  exchangeRate: 279, // SBP reference rate, 11-Apr-2026
 };
 
 // ============================================================
@@ -230,7 +230,7 @@ export const DEFAULT_FORMULA_PARAMS: FormulaParams = {
   m5_securityMultiplier_normal: 1.00,
   // M6
   m6_productPremium: 1.10,
-  m6_freightPremium: 1.15,
+  m6_freightPremium: 1.45, // Updated: VLCC rates $900k→$4M/day (~4.4x); war-risk insurance 1-7.5% hull value (Lloyd's List Apr 2026)
   m6_warDurationMonths: 6,
   m6_normalDemandBpd: 423_000,
   // M8 thresholds
@@ -282,13 +282,13 @@ export const SOURCE_TOOLTIPS: Record<string, { source: string; date: string; ass
   'foDailyConsumption': { source: 'OCAC DSSP — derived from stock/days cover', date: '08-Apr-2026', reasoning: '238,053 MT / 84.18 days = 2,828 MT/day' },
   'totalPetroleumConsumption': { source: 'CEIC', date: 'Dec 2024' },
   'preCrisisBrent': { source: 'ICE Brent Futures', date: '27 Feb 2026' },
-  'currentBrentSpot': { source: 'Market data', date: 'April 2026', verify: true },
+  'currentBrentSpot': { source: 'Dated Brent physical $131.97 (CNBC); futures ~$97 but physical reflects procurement cost', date: '10-Apr-2026' },
   'sbpReserves': { source: 'SBP Weekly Statement', date: 'Week ending 27 March 2026' },
   'reservesFloor': { source: 'Working Group estimate', date: 'April 2026', assumption: true, reasoning: 'Roughly 1.5 months normal imports' },
-  'imfAvailable': { source: 'IMF EFF + RSF program', date: 'April 2026', verify: true },
-  'saudiDeferredFacility': { source: 'Bilateral agreement', date: '2025', assumption: true },
-  'chinaSwapLine': { source: 'PBOC-SBP swap arrangement', date: '2025', assumption: true },
-  'exchangeRate': { source: 'SBP Reference Rate', date: 'April 2026' },
+  'imfAvailable': { source: 'IMF 3rd EFF review + 2nd RSF staff-level agreement', date: '27-Mar-2026', reasoning: '$1.0B EFF + $0.21B RSF = $1.21B pending board approval' },
+  'saudiDeferredFacility': { source: 'Bilateral agreement; expansion to $5B requested (Geo News)', date: 'Mar 2026', reasoning: 'Current $1.2B/yr; Pakistan requested $5B expansion, not yet confirmed' },
+  'chinaSwapLine': { source: 'PBOC-SBP CNY 20B swap arrangement', date: '2024-2025', reasoning: 'Reduced from $4B to ~$3B based on CNY 20B at current rates' },
+  'exchangeRate': { source: 'SBP Reference Rate', date: '11-Apr-2026', reasoning: 'PKR 279/USD, stable at 278-280 range' },
   'nelsonIndex': { source: 'Estimated from technology type', date: 'April 2026', assumption: true, verify: true },
   'foStorageDays': { source: 'Working Group estimate', date: 'April 2026', assumption: true },
 };
