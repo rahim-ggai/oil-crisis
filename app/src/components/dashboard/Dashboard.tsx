@@ -1,8 +1,9 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { useAppStore } from '@/lib/store';
 import { Card } from '@/components/ui/ModulePanel';
+import { readExcelFile, parseDSSP, parseTankerPlan } from '@/lib/excel-import';
 import {
   getWeightedDaysOfCover,
   getDaysOfCover,
@@ -54,6 +55,40 @@ function fmtInt(n: number): string {
 export function Dashboard() {
   const scenario = useAppStore((s) => s.scenario);
   const { m1, m2, m5, m6, m7, m8, formulaParams: fp } = scenario;
+  const { updateM1, updateM2 } = useAppStore();
+  const dsspRef = useRef<HTMLInputElement>(null);
+  const tankerRef = useRef<HTMLInputElement>(null);
+  const [importMsg, setImportMsg] = useState<string | null>(null);
+
+  async function handleDSSP(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const wb = await readExcelFile(file);
+      const result = parseDSSP(wb);
+      if (Object.keys(result.m1).length > 0) {
+        updateM1(result.m1);
+        setImportMsg(`DSSP imported: ${Object.keys(result.m1).length} fields updated`);
+      } else { setImportMsg('No matching data found in DSSP file'); }
+    } catch (err) { setImportMsg(`Import failed: ${err}`); }
+    if (dsspRef.current) dsspRef.current.value = '';
+    setTimeout(() => setImportMsg(null), 5000);
+  }
+
+  async function handleTanker(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const wb = await readExcelFile(file);
+      const result = parseTankerPlan(wb);
+      if (result.cargoes.length > 0) {
+        updateM2({ cargoes: result.cargoes });
+        setImportMsg(`Tanker Plan imported: ${result.cargoes.length} vessels`);
+      } else { setImportMsg('No vessel records found in file'); }
+    } catch (err) { setImportMsg(`Import failed: ${err}`); }
+    if (tankerRef.current) tankerRef.current.value = '';
+    setTimeout(() => setImportMsg(null), 5000);
+  }
 
   const triggerOutput = useMemo(() => computeTrigger(scenario), [scenario]);
   const iranOutput = useMemo(() => computeIranCorridor(m5, scenario.baselineMode, fp), [m5, scenario.baselineMode, fp]);
@@ -124,6 +159,24 @@ export function Dashboard() {
 
   return (
     <div className="space-y-6">
+      {/* Import Data Bar */}
+      <div className="flex items-center gap-3 bg-card border border-border rounded-lg px-4 py-2.5">
+        <span className="text-xs font-medium text-slate">Import Ministry Data:</span>
+        <label className="px-3 py-1 text-xs font-medium bg-input-bg border border-border text-navy rounded cursor-pointer hover:bg-card-hover transition-colors">
+          DSSP (Stock Position)
+          <input ref={dsspRef} type="file" accept=".xlsx,.xls" onChange={handleDSSP} className="hidden" />
+        </label>
+        <label className="px-3 py-1 text-xs font-medium bg-input-bg border border-border text-navy rounded cursor-pointer hover:bg-card-hover transition-colors">
+          Tanker Plan (Vessels)
+          <input ref={tankerRef} type="file" accept=".xlsx,.xls" onChange={handleTanker} className="hidden" />
+        </label>
+        {importMsg && (
+          <span className={`text-xs font-mono ml-2 ${importMsg.includes('failed') ? 'text-red-muted' : 'text-green-muted'}`}>
+            {importMsg}
+          </span>
+        )}
+      </div>
+
       {/* Vital Signs Cards */}
       <div className="grid grid-cols-3 gap-4">
         {/* 1. Days of Fuel Cover */}
