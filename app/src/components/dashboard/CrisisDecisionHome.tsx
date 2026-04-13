@@ -250,25 +250,24 @@ function Section({
   loading,
   badge,
   onReanalyze,
-  isLast,
 }: SectionProps) {
   return (
-    <section className={`py-8 ${isLast ? '' : 'border-b border-border'}`}>
-      <h2 className="text-xl font-semibold text-navy border-l-4 border-navy pl-4 mb-6">
+    <div className="min-h-0 flex flex-col">
+      <h2 className="text-xl font-semibold text-navy border-l-4 border-navy pl-4 mb-4 flex-shrink-0">
         {number} &mdash; {question}
       </h2>
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-        <div className="lg:col-span-2">{chart}</div>
-        <div className="lg:col-span-3">
-          <AIReasoningPanel
-            reasoning={reasoning}
-            loading={loading}
-            badge={badge}
-            onReanalyze={onReanalyze}
-          />
-        </div>
+      {/* Chart fills most of the space */}
+      <div className="flex-shrink-0 mb-4 min-h-[320px]">{chart}</div>
+      {/* AI reasoning below */}
+      <div className="flex-1 overflow-y-auto">
+        <AIReasoningPanel
+          reasoning={reasoning}
+          loading={loading}
+          badge={badge}
+          onReanalyze={onReanalyze}
+        />
       </div>
-    </section>
+    </div>
   );
 }
 
@@ -947,59 +946,94 @@ export function CrisisDecisionHome() {
       ? 'Full Corridor Compromised'
       : 'Iran Permitted Transit';
 
+  // ── Carousel state ──
+  const [activeQ, setActiveQ] = useState(0);
+
+  const goNext = () => setActiveQ((prev) => Math.min(prev + 1, QUESTIONS.length - 1));
+  const goPrev = () => setActiveQ((prev) => Math.max(prev - 1, 0));
+
   return (
-    <div className="max-w-6xl mx-auto px-6 py-10">
-      {/* Header */}
-      <div className="mb-10">
-        <div className="flex items-start justify-between flex-wrap gap-4">
+    <div className="flex flex-col h-full overflow-hidden">
+      {/* Header bar */}
+      <div className="flex-shrink-0 px-6 pt-4 pb-3">
+        <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-semibold text-navy tracking-tight">
+            <h1 className="text-lg font-semibold text-navy tracking-tight">
               Crisis Decision Briefing
             </h1>
-            <p className="text-sm text-slate mt-1">
-              AI-powered analysis of 6 critical questions for the National Energy
-              Security Working Group
-            </p>
-            <div className="flex items-center gap-4 mt-3 text-xs text-slate">
-              <span>
-                Scenario:{' '}
-                <span className="font-semibold text-foreground">
-                  {scenario.scenarioName}
-                </span>
-              </span>
+            <div className="flex items-center gap-3 mt-1 text-xs text-slate">
+              <span>{scenario.scenarioName}</span>
               <span className="text-border">|</span>
-              <span>
-                Baseline:{' '}
-                <span className="font-semibold text-foreground">
-                  {baselineLabel}
-                </span>
-              </span>
+              <span>{baselineLabel}</span>
             </div>
           </div>
           <button
             onClick={fetchAll}
             disabled={loading.some(Boolean)}
-            className="text-sm font-medium text-card bg-navy hover:bg-navy-light rounded px-4 py-2 transition-colors disabled:opacity-50"
+            className="text-xs font-medium text-card bg-navy hover:bg-navy-light rounded px-3 py-1.5 transition-colors disabled:opacity-50"
           >
             {loading.some(Boolean) ? 'Analyzing...' : 'Refresh All'}
           </button>
         </div>
+
+        {/* Question navigation dots + prev/next */}
+        <div className="flex items-center justify-between mt-3">
+          <button
+            onClick={goPrev}
+            disabled={activeQ === 0}
+            className="text-xs font-medium text-navy border border-border rounded px-3 py-1.5 hover:bg-card-hover transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+          >
+            Previous
+          </button>
+
+          <div className="flex items-center gap-1.5">
+            {QUESTIONS.map((q, i) => (
+              <button
+                key={q.number}
+                onClick={() => setActiveQ(i)}
+                className={`flex items-center gap-1 px-2 py-1 rounded text-[10px] font-medium transition-all ${
+                  activeQ === i
+                    ? 'bg-navy text-white'
+                    : 'bg-input-bg text-slate hover:bg-card-hover'
+                }`}
+              >
+                {q.number}
+              </button>
+            ))}
+          </div>
+
+          <button
+            onClick={goNext}
+            disabled={activeQ === QUESTIONS.length - 1}
+            className="text-xs font-medium text-navy border border-border rounded px-3 py-1.5 hover:bg-card-hover transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+          >
+            Next
+          </button>
+        </div>
       </div>
 
-      {/* Sections */}
-      {QUESTIONS.map((q, i) => (
-        <Section
-          key={q.number}
-          number={q.number}
-          question={q.question}
-          chart={charts[i]}
-          reasoning={analyses[i]}
-          loading={loading[i]}
-          badge={badges[i]}
-          onReanalyze={() => fetchOne(i)}
-          isLast={i === QUESTIONS.length - 1}
-        />
-      ))}
+      {/* Carousel viewport */}
+      <div className="flex-1 overflow-hidden relative">
+        <div
+          className="flex h-full transition-transform duration-500 ease-in-out"
+          style={{ transform: `translateX(-${activeQ * 100}%)` }}
+        >
+          {QUESTIONS.map((q, i) => (
+            <div key={q.number} className="w-full flex-shrink-0 px-6 pb-4 overflow-y-auto">
+              <Section
+                number={q.number}
+                question={q.question}
+                chart={charts[i]}
+                reasoning={analyses[i]}
+                loading={loading[i]}
+                badge={badges[i]}
+                onReanalyze={() => fetchOne(i)}
+                isLast={i === QUESTIONS.length - 1}
+              />
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
