@@ -108,6 +108,21 @@ export function Dashboard() {
   const brentDelta = m6.currentBrentSpot - m6.preCrisisBrent;
   const brentDeltaPct = ((brentDelta / m6.preCrisisBrent) * 100);
 
+  // ── Live Brent Price ──
+  const { updateM6 } = useAppStore();
+  const [livePrice, setLivePrice] = useState<{ price: number; updatedAt: string; change24h: { amount: number; percent: number } | null } | null>(null);
+  const [livePriceError, setLivePriceError] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch('/api/oil-price')
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.error) { setLivePriceError(data.error); return; }
+        setLivePrice({ price: data.price, updatedAt: data.updatedAt, change24h: data.change24h });
+      })
+      .catch(() => setLivePriceError('Failed to fetch'));
+  }, []);
+
   const usableReserves = Math.max(0, m6.sbpReserves - m6.reservesFloor);
   const monthsOfImports = m6.normalMonthlyImportBill > 0 ? m6.sbpReserves / m6.normalMonthlyImportBill : 0;
 
@@ -322,7 +337,7 @@ export function Dashboard() {
 
         {/* 2. Brent Spot */}
         <Card>
-          <p className="text-xs font-medium text-slate uppercase tracking-wide mb-2">Brent Spot</p>
+          <p className="text-xs font-medium text-slate uppercase tracking-wide mb-2">Brent Spot (Scenario)</p>
           <p className="font-mono text-4xl font-semibold text-navy leading-none mb-2">
             ${fmt(m6.currentBrentSpot, 0)}
           </p>
@@ -332,6 +347,40 @@ export function Dashboard() {
               {brentDelta > 0 ? '+' : ''}{fmt(brentDelta, 0)} ({brentDelta > 0 ? '+' : ''}{fmt(brentDeltaPct, 0)}%)
             </span>
             <span className="text-slate ml-1">vs pre-crisis ${fmt(m6.preCrisisBrent, 0)}</span>
+          </div>
+          {/* Live Price */}
+          <div className="mt-3 pt-3 border-t border-border">
+            {livePrice ? (
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-green-muted animate-pulse" />
+                    <span className="text-[10px] text-slate uppercase tracking-wide">Live</span>
+                  </div>
+                  <span className="font-mono text-lg font-semibold text-navy">${fmt(livePrice.price, 2)}</span>
+                  {livePrice.change24h && (
+                    <span className={`ml-1.5 text-[10px] font-mono ${livePrice.change24h.amount > 0 ? 'text-red-muted' : 'text-green-muted'}`}>
+                      {livePrice.change24h.amount > 0 ? '+' : ''}{fmt(livePrice.change24h.amount, 2)} ({fmt(livePrice.change24h.percent, 1)}%)
+                    </span>
+                  )}
+                  <div className="text-[9px] text-slate/60 mt-0.5">
+                    {new Date(livePrice.updatedAt).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    updateM6({ currentBrentSpot: Math.round(livePrice.price * 100) / 100, brentMultiplier: Math.round((livePrice.price / m6.preCrisisBrent) * 100) / 100 });
+                  }}
+                  className="text-[10px] font-medium text-navy border border-border rounded px-2 py-1 hover:bg-card-hover transition-colors"
+                >
+                  Use Live Price
+                </button>
+              </div>
+            ) : livePriceError ? (
+              <p className="text-[10px] text-slate/60">Live price unavailable</p>
+            ) : (
+              <p className="text-[10px] text-slate/60 animate-pulse">Fetching live price...</p>
+            )}
           </div>
         </Card>
 
