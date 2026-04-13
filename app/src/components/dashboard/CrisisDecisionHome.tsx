@@ -7,6 +7,7 @@ import { SupplyFlowDiagram } from '@/components/dashboard/SupplyFlowDiagram';
 import { RadarTradeoff } from '@/components/dashboard/RadarTradeoff';
 import { FuelGauge } from '@/components/dashboard/FuelGauge';
 import { computeTrigger } from '@/lib/calculations/m8-trigger';
+import { computeIranCorridor } from '@/lib/calculations/m5-iran';
 import type { TriggerOutput } from '@/lib/calculations/m8-trigger';
 import {
   getDaysOfCover,
@@ -918,10 +919,9 @@ export function CrisisDecisionHome() {
 
   // ── Charts ──
 
-  const iranOutput = useMemo(() => {
-    const { computeIranCorridor } = require('@/lib/calculations/m5-iran');
-    return computeIranCorridor(scenario.m5, scenario.baselineMode, scenario.formulaParams);
-  }, [scenario]);
+  const iranOutput = useMemo(() =>
+    computeIranCorridor(scenario.m5, scenario.baselineMode, scenario.formulaParams),
+  [scenario]);
 
   const charts = [
     <Q1Chart key="q1" trigger={trigger} weights={scenario.m8.weights} />,
