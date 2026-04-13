@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import { useAppStore } from '@/lib/store';
-import type { ActivePanel } from '@/types';
+import { useAppStore } from "@/lib/store";
+import type { ActivePanel } from "@/types";
 
 const NAV_ITEMS: { id: ActivePanel; label: string; shortLabel?: string }[] = [
   { id: 'briefing', label: 'Briefing' },
@@ -15,6 +15,7 @@ const NAV_ITEMS: { id: ActivePanel; label: string; shortLabel?: string }[] = [
   { id: 'm6', label: 'M6: Price', shortLabel: 'Price' },
   { id: 'm7', label: 'M7: Conservation', shortLabel: 'Conservation' },
   { id: 'm8', label: 'M8: Trigger', shortLabel: 'Trigger' },
+  { id: 'map', label: 'Ship Tracking', shortLabel: 'Map' },
   { id: 'scenarios', label: 'Scenarios' },
   { id: 'report', label: 'Report' },
   { id: 'formulas', label: 'Formulas' },
@@ -32,8 +33,8 @@ export function LeftNav() {
             onClick={() => setActivePanel(item.id)}
             className={`w-full text-left px-4 py-2 text-sm transition-colors ${
               activePanel === item.id
-                ? 'bg-navy text-white font-medium'
-                : 'text-foreground hover:bg-card-hover'
+                ? "bg-navy text-white font-medium"
+                : "text-foreground hover:bg-card-hover"
             }`}
           >
             {item.label}

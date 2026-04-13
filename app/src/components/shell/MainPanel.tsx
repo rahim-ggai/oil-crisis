@@ -15,6 +15,7 @@ import { ReportPanel } from '@/components/report/ReportPanel';
 import { FormulasPanel } from '@/components/modules/FormulasPanel';
 import { CrisisDecisionHome } from '@/components/dashboard/CrisisDecisionHome';
 import { OilPriceDashboard } from '@/components/dashboard/OilPriceDashboard';
+import { MapPanel } from '@/components/modules/MapPanel';
 
 export function MainPanel() {
   const activePanel = useAppStore((s) => s.activePanel);
@@ -31,6 +32,7 @@ export function MainPanel() {
     case 'm6': return <M6Price />;
     case 'm7': return <M7Conservation />;
     case 'm8': return <M8Trigger />;
+    case 'map': return <MapPanel />;
     case 'scenarios': return <ScenarioManager />;
     case 'report': return <ReportPanel />;
     case 'formulas': return <FormulasPanel />;
