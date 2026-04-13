@@ -1,8 +1,9 @@
-@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@300;400;500;600;700&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@300;400;500;600;700&display=swap");
 @import "tailwindcss";
+@import "leaflet/dist/leaflet.css";
 
 @theme inline {
-  --color-background: #FAF9F6;
+  --color-background: #faf9f6;
   --color-foreground: #1a1a2e;
   --color-navy: #1a1a2e;
   --color-navy-light: #2d2d4a;
@@ -19,8 +20,8 @@
   --color-card-hover: #f5f4f0;
   --color-input-bg: #f5f4f0;
   --color-accent-blue: #2563eb;
-  --font-sans: 'IBM Plex Sans', 'Inter', system-ui, sans-serif;
-  --font-mono: 'IBM Plex Mono', monospace;
+  --font-sans: "IBM Plex Sans", "Inter", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", monospace;
 }
 
 body {
@@ -66,7 +67,13 @@ body {
 
 /* Print styles for report */
 @media print {
-  .no-print { display: none !important; }
-  .print-only { display: block !important; }
-  body { background: white; }
+  .no-print {
+    display: none !important;
+  }
+  .print-only {
+    display: block !important;
+  }
+  body {
+    background: white;
+  }
 }
