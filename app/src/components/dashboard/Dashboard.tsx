@@ -1,22 +1,20 @@
 'use client';
 
-import { useMemo, useRef, useState, useEffect } from 'react';
+import { useMemo, useRef, useState } from 'react';
+import { DASHBOARD_DUMMY_DATA as d } from '@/lib/dashboard-dummy';
 import { useAppStore } from '@/lib/store';
 import { Card } from '@/components/ui/ModulePanel';
 import { readExcelFile, parseDSSP, parseTankerPlan } from '@/lib/excel-import';
 import { computeImportRecommendation, traceImportRecommendation } from '@/lib/calculations/import-recommendation';
 import type { ImportRecommendationParams } from '@/lib/calculations/import-recommendation';
 import {
-  getWeightedDaysOfCover,
-  getDaysOfCover,
   computeDepletionCurve,
   getReductionForLevel,
   traceWeightedDaysOfCover,
 } from '@/lib/calculations/m1-inventory';
-import { getRiskWeightedBarrels, traceRiskWeightedBarrels } from '@/lib/calculations/m2-pipeline';
-import { computeIranCorridor, traceIranCorridor } from '@/lib/calculations/m5-iran';
-import { computeAffordability, traceAffordability } from '@/lib/calculations/m6-price';
-import { computeTrigger, traceTrigger } from '@/lib/calculations/m8-trigger';
+import { traceRiskWeightedBarrels } from '@/lib/calculations/m2-pipeline';
+import { traceIranCorridor } from '@/lib/calculations/m5-iran';
+import { traceTrigger } from '@/lib/calculations/m8-trigger';
 import { InlineFormula } from '@/components/ui/FormulaBreakdown';
 import type { ConservationLevel, DemandReduction, TriggerLevel } from '@/types';
 import {
@@ -92,41 +90,13 @@ export function Dashboard() {
     setTimeout(() => setImportMsg(null), 5000);
   }
 
-  const triggerOutput = useMemo(() => computeTrigger(scenario), [scenario]);
-  const iranOutput = useMemo(() => computeIranCorridor(m5, scenario.baselineMode, fp), [m5, scenario.baselineMode, fp]);
-  const affordability = useMemo(() => computeAffordability(m6, fp), [m6, fp]);
+  const brentDelta = d.currentBrentSpot - d.preCrisisBrent;
+  const brentDeltaPct = ((brentDelta / d.preCrisisBrent) * 100);
 
-  const m1Weights = useMemo(() => ({ hsd: fp.m1_hsdWeight, ms: fp.m1_msWeight, fo: fp.m1_foWeight }), [fp]);
-  const weightedDaysOfCover = useMemo(() => getWeightedDaysOfCover(m1, undefined, m1Weights), [m1, m1Weights]);
-  const hsdDays = useMemo(() => getDaysOfCover(m1.hsdStock, m1.hsdDailyConsumption), [m1]);
-  const msDays = useMemo(() => getDaysOfCover(m1.msStock, m1.msDailyConsumption), [m1]);
-  const foDays = useMemo(() => getDaysOfCover(m1.foStock, m1.foDailyConsumption), [m1]);
-
-  const brentDelta = m6.currentBrentSpot - m6.preCrisisBrent;
-  const brentDeltaPct = ((brentDelta / m6.preCrisisBrent) * 100);
-
-  const usableReserves = Math.max(0, m6.sbpReserves - m6.reservesFloor);
-  const monthsOfImports = m6.normalMonthlyImportBill > 0 ? m6.sbpReserves / m6.normalMonthlyImportBill : 0;
-
-  const rwBarrels = useMemo(() => getRiskWeightedBarrels(m2.cargoes, scenario.baselineMode), [m2.cargoes, scenario.baselineMode]);
-
-  const cargoStatusBuckets = useMemo(() => {
-    const buckets: Record<string, number> = { docked: 0, in_war_zone: 0, outside_war_zone: 0, contracted_not_dispatched: 0 };
-    m2.cargoes.forEach((c) => { buckets[c.status] = (buckets[c.status] || 0) + 1; });
-    return buckets;
-  }, [m2.cargoes]);
-
-  const iranStatus = useMemo(() => {
-    if (iranOutput.totalBblDay === 0) return 'Closed';
-    if (iranOutput.corridorScore < 50) return 'Degraded';
-    return 'Open';
-  }, [iranOutput]);
-
-  const iranStatusColor = useMemo(() => {
-    if (iranStatus === 'Closed') return 'text-red-muted';
-    if (iranStatus === 'Degraded') return 'text-ochre';
-    return 'text-green-muted';
-  }, [iranStatus]);
+  const iranStatusColor =
+    d.iranStatus === 'Closed' ? 'text-red-muted'
+    : d.iranStatus === 'Degraded' ? 'text-ochre'
+    : 'text-green-muted';
 
   // Depletion curves: 4 conservation scenarios
   const m7Reductions = useMemo(() => ({
@@ -167,15 +137,11 @@ export function Dashboard() {
   [m1]);
 
   // Local editable constraint state (initialized from store, analyst can tweak)
-  const [irSbp, setIrSbp] = useState(m6.sbpReserves);
-  const [irFloor, setIrFloor] = useState(m6.reservesFloor);
-  const [irLockdown, setIrLockdown] = useState(2);
-  const [irWarMonths, setIrWarMonths] = useState(fp.m6_warDurationMonths);
-  const [irBrent, setIrBrent] = useState(m6.currentBrentSpot);
-
-  // Sync from store when store values change
-  useEffect(() => { setIrSbp(m6.sbpReserves); }, [m6.sbpReserves]);
-  useEffect(() => { setIrBrent(m6.currentBrentSpot); }, [m6.currentBrentSpot]);
+  const [irSbp, setIrSbp] = useState(d.irSbp);
+  const [irFloor, setIrFloor] = useState(d.irFloor);
+  const [irLockdown, setIrLockdown] = useState(d.irLockdown);
+  const [irWarMonths, setIrWarMonths] = useState(d.irWarMonths);
+  const [irBrent, setIrBrent] = useState(d.irBrent);
 
   const irParams: ImportRecommendationParams = useMemo(() => ({
     sbpReserves: irSbp,
@@ -223,22 +189,22 @@ export function Dashboard() {
           <p className="text-xs font-medium text-slate uppercase tracking-wide mb-2">Days of Fuel Cover</p>
           <InlineFormula trace={traceWeightedDaysOfCover(m1)}>
             <p className="font-mono text-4xl font-semibold text-navy leading-none">
-              {fmt(weightedDaysOfCover, 0)}
+              {fmt(d.weightedDaysOfCover, 0)}
             </p>
           </InlineFormula>
           <p className="text-xs text-slate mt-2">Weighted average (HSD/MS/FO)</p>
           <div className="mt-3 grid grid-cols-3 gap-2 text-xs">
             <div>
               <span className="text-slate">HSD</span>
-              <span className="font-mono ml-1 text-navy font-medium">{fmt(hsdDays, 0)}d</span>
+              <span className="font-mono ml-1 text-navy font-medium">{fmt(d.hsdDays, 0)}d</span>
             </div>
             <div>
               <span className="text-slate">MS</span>
-              <span className="font-mono ml-1 text-navy font-medium">{fmt(msDays, 0)}d</span>
+              <span className="font-mono ml-1 text-navy font-medium">{fmt(d.msDays, 0)}d</span>
             </div>
             <div>
               <span className="text-slate">FO</span>
-              <span className="font-mono ml-1 text-navy font-medium">{fmt(foDays, 0)}d</span>
+              <span className="font-mono ml-1 text-navy font-medium">{fmt(d.foDays, 0)}d</span>
             </div>
           </div>
         </Card>
@@ -247,14 +213,14 @@ export function Dashboard() {
         <Card>
           <p className="text-xs font-medium text-slate uppercase tracking-wide mb-2">Brent Spot</p>
           <p className="font-mono text-4xl font-semibold text-navy leading-none mb-2">
-            ${fmt(m6.currentBrentSpot, 0)}
+            ${fmt(d.currentBrentSpot, 0)}
           </p>
           <p className="text-xs text-slate">USD/bbl</p>
           <div className="mt-3 text-xs">
             <span className={`font-mono font-medium ${brentDelta > 0 ? 'text-red-muted' : 'text-green-muted'}`}>
               {brentDelta > 0 ? '+' : ''}{fmt(brentDelta, 0)} ({brentDelta > 0 ? '+' : ''}{fmt(brentDeltaPct, 0)}%)
             </span>
-            <span className="text-slate ml-1">vs pre-crisis ${fmt(m6.preCrisisBrent, 0)}</span>
+            <span className="text-slate ml-1">vs pre-crisis ${fmt(d.preCrisisBrent, 0)}</span>
           </div>
         </Card>
 
@@ -262,11 +228,11 @@ export function Dashboard() {
         <Card>
           <p className="text-xs font-medium text-slate uppercase tracking-wide mb-2">SBP Usable Reserves</p>
           <p className="font-mono text-4xl font-semibold text-navy leading-none mb-2">
-            ${fmt(m6.sbpReserves, 1)}B
+            ${fmt(d.sbpReserves, 1)}B
           </p>
-          <p className="text-xs text-slate">USD bn (floor: ${fmt(m6.reservesFloor, 0)}B)</p>
+          <p className="text-xs text-slate">USD bn (floor: ${fmt(d.reservesFloor, 0)}B)</p>
           <div className="mt-3 text-xs">
-            <span className="font-mono font-medium text-navy">{fmt(monthsOfImports, 1)}</span>
+            <span className="font-mono font-medium text-navy">{fmt(d.monthsOfImports, 1)}</span>
             <span className="text-slate ml-1">months of imports</span>
           </div>
         </Card>
@@ -275,22 +241,22 @@ export function Dashboard() {
         <Card>
           <p className="text-xs font-medium text-slate uppercase tracking-wide mb-2">Active Trigger Level</p>
           <div className="flex items-center gap-3 mb-2">
-            <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded text-sm font-semibold border ${LEVEL_COLORS[triggerOutput.recommendedLevel]}`}>
-              <span className={`w-2 h-2 rounded-full ${LEVEL_DOT[triggerOutput.recommendedLevel]}`} />
-              {triggerOutput.recommendedLevel}
+            <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded text-sm font-semibold border ${LEVEL_COLORS[d.recommendedLevel]}`}>
+              <span className={`w-2 h-2 rounded-full ${LEVEL_DOT[d.recommendedLevel]}`} />
+              {d.recommendedLevel}
             </span>
           </div>
           <div className="mt-1 text-xs">
             <InlineFormula trace={traceTrigger(scenario)}>
               <span>
                 <span className="text-slate">Composite stress:</span>
-                <span className="font-mono font-medium text-navy ml-1">{fmt(triggerOutput.compositeStress, 1)}</span>
+                <span className="font-mono font-medium text-navy ml-1">{fmt(d.compositeStress, 1)}</span>
                 <span className="text-slate">/100</span>
               </span>
             </InlineFormula>
           </div>
-          {triggerOutput.hardOverrideActive && (
-            <p className="mt-2 text-[10px] text-red-muted leading-tight">{triggerOutput.hardOverrideActive}</p>
+          {d.hardOverrideActive && (
+            <p className="mt-2 text-[10px] text-red-muted leading-tight">{d.hardOverrideActive}</p>
           )}
         </Card>
 
@@ -298,19 +264,19 @@ export function Dashboard() {
         <Card>
           <p className="text-xs font-medium text-slate uppercase tracking-wide mb-2">Cargoes In Transit</p>
           <p className="font-mono text-4xl font-semibold text-navy leading-none mb-2">
-            {m2.cargoes.length}
+            {d.totalCargoes}
           </p>
           <div className="mt-1 grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
-            <div><span className="text-slate">Docked:</span> <span className="font-mono font-medium">{cargoStatusBuckets.docked}</span></div>
-            <div><span className="text-slate">War zone:</span> <span className="font-mono font-medium">{cargoStatusBuckets.in_war_zone}</span></div>
-            <div><span className="text-slate">Outside WZ:</span> <span className="font-mono font-medium">{cargoStatusBuckets.outside_war_zone}</span></div>
-            <div><span className="text-slate">Not dispatched:</span> <span className="font-mono font-medium">{cargoStatusBuckets.contracted_not_dispatched}</span></div>
+            <div><span className="text-slate">Docked:</span> <span className="font-mono font-medium">{d.cargoStatusBuckets.docked}</span></div>
+            <div><span className="text-slate">War zone:</span> <span className="font-mono font-medium">{d.cargoStatusBuckets.in_war_zone}</span></div>
+            <div><span className="text-slate">Outside WZ:</span> <span className="font-mono font-medium">{d.cargoStatusBuckets.outside_war_zone}</span></div>
+            <div><span className="text-slate">Not dispatched:</span> <span className="font-mono font-medium">{d.cargoStatusBuckets.contracted_not_dispatched}</span></div>
           </div>
           <div className="mt-2 text-xs">
             <InlineFormula trace={traceRiskWeightedBarrels(m2.cargoes, scenario.baselineMode)}>
               <span>
                 <span className="text-slate">Risk-weighted volume:</span>
-                <span className="font-mono font-medium text-navy ml-1">{fmtInt(rwBarrels)} bbl</span>
+                <span className="font-mono font-medium text-navy ml-1">{fmtInt(d.rwBarrels)} bbl</span>
               </span>
             </InlineFormula>
           </div>
@@ -321,25 +287,25 @@ export function Dashboard() {
           <p className="text-xs font-medium text-slate uppercase tracking-wide mb-2">Iranian Corridor</p>
           <InlineFormula trace={traceIranCorridor(m5, scenario.baselineMode)}>
             <p className={`text-2xl font-semibold leading-none ${iranStatusColor}`}>
-              {iranStatus}
+              {d.iranStatus}
             </p>
           </InlineFormula>
-          <p className="text-xs text-slate mb-3">Score: <span className="font-mono font-medium">{fmt(iranOutput.corridorScore, 0)}</span>/100</p>
+          <p className="text-xs text-slate mb-3">Score: <span className="font-mono font-medium">{fmt(d.corridorScore, 0)}</span>/100</p>
           <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
             <div>
               <span className="text-slate">Maritime:</span>
-              <span className="font-mono font-medium ml-1">{fmtInt(iranOutput.maritimeBblDay)}</span>
+              <span className="font-mono font-medium ml-1">{fmtInt(d.maritimeBblDay)}</span>
               <span className="text-slate"> bbl/d</span>
             </div>
             <div>
               <span className="text-slate">Overland:</span>
-              <span className="font-mono font-medium ml-1">{fmtInt(iranOutput.overlandBblDay)}</span>
+              <span className="font-mono font-medium ml-1">{fmtInt(d.overlandBblDay)}</span>
               <span className="text-slate"> bbl/d</span>
             </div>
           </div>
           <div className="mt-1 text-xs">
             <span className="text-slate">Total:</span>
-            <span className="font-mono font-medium text-navy ml-1">{fmtInt(iranOutput.totalBblDay)} bbl/d</span>
+            <span className="font-mono font-medium text-navy ml-1">{fmtInt(d.totalBblDay)} bbl/d</span>
           </div>
         </Card>
       </div>
@@ -483,25 +449,25 @@ export function Dashboard() {
       </Card>
 
       {/* Recommendation Banner */}
-      <div className={`rounded-lg border p-4 ${LEVEL_COLORS[triggerOutput.recommendedLevel]}`}>
+      <div className={`rounded-lg border p-4 ${LEVEL_COLORS[d.recommendedLevel]}`}>
         <div className="flex items-start gap-3">
-          <span className={`mt-0.5 w-3 h-3 rounded-full flex-shrink-0 ${LEVEL_DOT[triggerOutput.recommendedLevel]}`} />
+          <span className={`mt-0.5 w-3 h-3 rounded-full flex-shrink-0 ${LEVEL_DOT[d.recommendedLevel]}`} />
           <div>
             <p className="text-sm font-semibold mb-1">
-              Module 8 trigger function recommends: {triggerOutput.recommendedLevel}
+              Module 8 trigger function recommends: {d.recommendedLevel}
             </p>
             <div className="text-xs space-y-0.5 opacity-90">
-              <p>Composite stress: {fmt(triggerOutput.compositeStress, 1)}/100</p>
+              <p>Composite stress: {fmt(d.compositeStress, 1)}/100</p>
               <p>
                 Components &mdash;
-                Days-of-cover stress: {fmt(triggerOutput.components.stressD, 1)} |
-                Price stress: {fmt(triggerOutput.components.stressP, 1)} |
-                Pipeline stress: {fmt(triggerOutput.components.stressS, 1)} |
-                Alternate buffer: {fmt(triggerOutput.components.bufferA, 1)} |
-                Iran buffer: {fmt(triggerOutput.components.bufferI, 1)}
+                Days-of-cover stress: {fmt(d.stressComponents.stressD, 1)} |
+                Price stress: {fmt(d.stressComponents.stressP, 1)} |
+                Pipeline stress: {fmt(d.stressComponents.stressS, 1)} |
+                Alternate buffer: {fmt(d.stressComponents.bufferA, 1)} |
+                Iran buffer: {fmt(d.stressComponents.bufferI, 1)}
               </p>
-              {triggerOutput.hardOverrideActive && (
-                <p className="font-medium mt-1">Override: {triggerOutput.hardOverrideActive}</p>
+              {d.hardOverrideActive && (
+                <p className="font-medium mt-1">Override: {d.hardOverrideActive}</p>
               )}
             </div>
           </div>
