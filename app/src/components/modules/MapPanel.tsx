@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import dynamic from "next/dynamic";
 import { ModulePanel, Card } from "@/components/ui/ModulePanel";
 import { MapPin, Navigation, Clock, Anchor } from "lucide-react";
@@ -43,6 +43,18 @@ interface VesselTrack {
   course: number;
 }
 
+// Default IMO numbers to load on mount
+const DEFAULT_IMOS = [
+  "9089229",
+  "9839492",
+  "9976769",
+  "9137284",
+  "8794310",
+  "9171058",
+  "9974917",
+  "8967656",
+];
+
 export function MapPanel() {
   const [vessels, setVessels] = useState<VesselPosition[]>([]);
   const [vesselTracks, setVesselTracks] = useState<
@@ -52,6 +64,7 @@ export function MapPanel() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [loadingDemo, setLoadingDemo] = useState(false);
+  const [initialLoadDone, setInitialLoadDone] = useState(false);
 
   const fetchVesselPosition = async (imo: string) => {
     setLoading(true);
@@ -164,6 +177,31 @@ export function MapPanel() {
     }
   };
 
+  // Auto-load default vessels on mount
+  useEffect(() => {
+    if (!initialLoadDone) {
+      setInitialLoadDone(true);
+      setLoadingDemo(true);
+
+      // Load each default IMO one by one
+      const loadVessels = async () => {
+        for (const imo of DEFAULT_IMOS) {
+          try {
+            await fetchVesselPosition(imo);
+            // Small delay between requests to avoid rate limiting
+            await new Promise((resolve) => setTimeout(resolve, 500));
+          } catch (err) {
+            console.error(`Failed to load vessel ${imo}:`, err);
+          }
+        }
+        setLoadingDemo(false);
+      };
+
+      loadVessels();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialLoadDone]);
+
   const loadDemoVessels = () => {
     setLoadingDemo(true);
     setError(null);
@@ -188,6 +226,17 @@ export function MapPanel() {
       subtitle="Track oil tankers and cargo vessels in real-time using MyShipTracking API"
     >
       <div className="space-y-6">
+        {loadingDemo && vessels.length === 0 && (
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <div className="flex items-center gap-3">
+              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
+              <p className="text-blue-800 font-medium">
+                Loading {DEFAULT_IMOS.length} vessels... Please wait
+              </p>
+            </div>
+          </div>
+        )}
+
         <Card
           title={`Search Vessel ${vessels.length > 0 ? `(${vessels.length} tracked)` : ""}`}
         >
