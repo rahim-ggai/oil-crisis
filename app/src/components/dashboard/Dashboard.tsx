@@ -6,6 +6,9 @@ import { Card } from '@/components/ui/ModulePanel';
 import { readExcelFile, parseDSSP, parseTankerPlan } from '@/lib/excel-import';
 import { computeImportRecommendation, traceImportRecommendation } from '@/lib/calculations/import-recommendation';
 import type { ImportRecommendationParams } from '@/lib/calculations/import-recommendation';
+import { computeSectorAllocation, checkRationingTrigger, getAllocationForLevel, SECTORS, FUEL_TYPES } from '@/lib/calculations/sector-allocation';
+import { computeReserveTimeline } from '@/lib/calculations/reserve-timeline';
+import { computeEconomicImpact, generateAdvisory } from '@/lib/calculations/economic-impact';
 import {
   getWeightedDaysOfCover,
   getDaysOfCover,
@@ -195,6 +198,80 @@ export function Dashboard() {
 
   const irResult = useMemo(() => computeImportRecommendation(irParams), [irParams]);
   const irTrace = useMemo(() => traceImportRecommendation(irParams), [irParams]);
+
+  // ── Sector Allocation ──
+  const currentLevel: ConservationLevel = triggerOutput.recommendedLevel === 'NORMAL' ? 'none'
+    : triggerOutput.recommendedLevel.toLowerCase() as ConservationLevel;
+  const currentReductions = useMemo(() => {
+    const r = currentLevel === 'alert' ? m7.alertReductions
+      : currentLevel === 'austerity' ? m7.austerityReductions
+      : currentLevel === 'emergency' ? m7.emergencyReductions
+      : { hsd: 0, ms: 0, fo: 0, jp1: 0 };
+    return r;
+  }, [currentLevel, m7]);
+
+  // Convert M1 daily consumption (tonnes) to bbl/day: HSD ~7.46, MS ~8.5, FO ~6.35
+  const dailyDemandBpd = useMemo(() => ({
+    hsd: m1.hsdDailyConsumption * 7.46,
+    ms: m1.msDailyConsumption * 8.5,
+    fo: m1.foDailyConsumption * 6.35,
+    jp1: 2000, // ~2k bbl/day JP-1 from DSSP
+  }), [m1]);
+
+  const sectorAlloc = useMemo(() =>
+    computeSectorAllocation(dailyDemandBpd, currentReductions, getAllocationForLevel(currentLevel)),
+  [dailyDemandBpd, currentReductions, currentLevel]);
+
+  const jp1Days = m1.jp1Stock > 0 && dailyDemandBpd.jp1 > 0 ? m1.jp1Stock / (dailyDemandBpd.jp1 * 0.136) : 99;
+  const rationingStatus = useMemo(() => checkRationingTrigger({
+    hsd: hsdDays, ms: msDays, fo: foDays, jp1: jp1Days,
+  }), [hsdDays, msDays, foDays, jp1Days]);
+
+  // ── Reserve Timeline ──
+  const reserveTimeline = useMemo(() => computeReserveTimeline({
+    sbpReserves: m6.sbpReserves,
+    reservesFloor: m6.reservesFloor,
+    brentSpot: m6.currentBrentSpot,
+    productPremium: fp.m6_productPremium,
+    freightPremium: fp.m6_freightPremium,
+    normalDemandBpd: fp.m6_normalDemandBpd,
+    imfAvailable: m6.imfAvailable,
+    saudiFacilityMonthly: (m6.saudiDoubled ? m6.saudiDeferredFacility * 2 : m6.saudiDeferredFacility) / 12,
+    barterMonthly: m6.barterCapacity / 12000,
+  }, { alert: m7.alertReductions, austerity: m7.austerityReductions, emergency: m7.emergencyReductions }),
+  [m6, fp, m7]);
+
+  // ── Economic Impact ──
+  const lockdownDaysPerLevel: Record<ConservationLevel, number> = { none: 0, alert: 0, austerity: 1, emergency: 2 };
+  const allReductions: Record<ConservationLevel, { hsd: number; ms: number; fo: number; jp1: number }> = {
+    none: { hsd: 0, ms: 0, fo: 0, jp1: 0 },
+    alert: m7.alertReductions,
+    austerity: m7.austerityReductions,
+    emergency: m7.emergencyReductions,
+  };
+  const daysOfCoverByLevel: Record<ConservationLevel, number> = {
+    none: weightedDaysOfCover,
+    alert: 0.5 * (m1.hsdStock / (m1.hsdDailyConsumption * (1 - m7.alertReductions.hsd))) + 0.35 * (m1.msStock / (m1.msDailyConsumption * (1 - m7.alertReductions.ms))) + 0.15 * (m1.foStock / (m1.foDailyConsumption * (1 - m7.alertReductions.fo))),
+    austerity: 0.5 * (m1.hsdStock / (m1.hsdDailyConsumption * (1 - m7.austerityReductions.hsd))) + 0.35 * (m1.msStock / (m1.msDailyConsumption * (1 - m7.austerityReductions.ms))) + 0.15 * (m1.foStock / (m1.foDailyConsumption * (1 - m7.austerityReductions.fo))),
+    emergency: 0.5 * (m1.hsdStock / (m1.hsdDailyConsumption * (1 - m7.emergencyReductions.hsd))) + 0.35 * (m1.msStock / (m1.msDailyConsumption * (1 - m7.emergencyReductions.ms))) + 0.15 * (m1.foStock / (m1.foDailyConsumption * (1 - m7.emergencyReductions.fo))),
+  };
+
+  const economicImpact = useMemo(() => computeEconomicImpact(
+    allReductions, daysOfCoverByLevel, reserveTimeline.monthsToFloor,
+    { annualGDP: 375, lockdownDaysPerLevel },
+  ), [allReductions, daysOfCoverByLevel, reserveTimeline.monthsToFloor]);
+
+  // ── Advisory ──
+  const advisory = useMemo(() => {
+    const currentMTF = reserveTimeline.monthsToFloor[currentLevel] ?? 12;
+    const topPriority = hsdDays < 20
+      ? 'Maintain HSD allocation to agriculture (wheat harvest Apr-May) and food transport. Cut industrial HSD first.'
+      : 'Balanced allocation across sectors. Monitor HSD days of cover closely.';
+    return generateAdvisory(
+      triggerOutput.recommendedLevel, rationingStatus.message,
+      { hsd: hsdDays, ms: msDays, fo: foDays }, currentMTF, topPriority,
+    );
+  }, [triggerOutput.recommendedLevel, rationingStatus.message, hsdDays, msDays, foDays, reserveTimeline, currentLevel]);
 
   return (
     <div className="space-y-6">
@@ -482,7 +559,195 @@ export function Dashboard() {
         </div>
       </Card>
 
-      {/* Recommendation Banner */}
+      {/* ══════ Sector Fuel Allocation ══════ */}
+      <Card title="Fuel Allocation by Sector">
+        <div className="flex items-center gap-3 mb-3">
+          <p className="text-xs text-slate">
+            Current allocation at <span className="font-semibold text-navy">{triggerOutput.recommendedLevel}</span> level. Shows bbl/day per sector after demand reductions.
+          </p>
+          <div className={`ml-auto px-2 py-0.5 rounded text-[10px] font-semibold ${rationingStatus.anyRationing ? 'bg-red-muted/15 text-red-muted' : 'bg-green-muted/15 text-green-muted'}`}>
+            {rationingStatus.anyRationing ? 'RATIONING ACTIVE' : 'NO RATIONING'}
+          </div>
+        </div>
+        {rationingStatus.anyRationing && (
+          <div className="bg-red-muted/5 border border-red-muted/20 rounded p-2 mb-3 text-xs text-red-muted">
+            {rationingStatus.message}
+          </div>
+        )}
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="border-b border-border">
+                <th className="text-left py-1.5 pr-3 text-[10px] font-medium text-slate">Sector</th>
+                {FUEL_TYPES.map((f) => (
+                  <th key={f} className="text-right py-1.5 px-2 text-[10px] font-medium text-slate">{f} (bbl/d)</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {SECTORS.map((sector) => {
+                const hasAny = FUEL_TYPES.some((f) => sectorAlloc.allocated[f][sector] > 0);
+                if (!hasAny) return null;
+                return (
+                  <tr key={sector} className="border-b border-border/30">
+                    <td className="py-1.5 pr-3 text-xs text-navy font-medium">{sector}</td>
+                    {FUEL_TYPES.map((f) => {
+                      const val = sectorAlloc.allocated[f][sector];
+                      return (
+                        <td key={f} className={`py-1.5 px-2 text-right font-mono text-xs ${val > 0 ? 'text-navy' : 'text-slate/30'}`}>
+                          {val > 0 ? fmtInt(val) : '-'}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                );
+              })}
+              <tr className="border-t border-border font-semibold">
+                <td className="py-1.5 pr-3 text-xs text-navy">Total Available</td>
+                {FUEL_TYPES.map((f) => (
+                  <td key={f} className="py-1.5 px-2 text-right font-mono text-xs text-navy">
+                    {fmtInt(Math.round(sectorAlloc.availablePerFuel[f]))}
+                  </td>
+                ))}
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </Card>
+
+      {/* ══════ Reserve Depletion Timeline ══════ */}
+      <Card title="Reserve Depletion Timeline (12-Month Projection)">
+        <p className="text-xs text-slate mb-3">
+          SBP reserves ($B) projected over 12 months under each conservation level. Horizontal line = reserve floor (${m6.reservesFloor}B).
+        </p>
+        <div className="h-64">
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={reserveTimeline.points} margin={{ top: 5, right: 20, bottom: 5, left: 10 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#e2e0dc" />
+              <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#64748b' }} label={{ value: 'Months', position: 'insideBottom', offset: -2, fontSize: 11, fill: '#64748b' }} />
+              <YAxis tick={{ fontSize: 11, fill: '#64748b' }} label={{ value: '$B', angle: -90, position: 'insideLeft', fontSize: 11, fill: '#64748b' }} domain={[0, 'auto']} />
+              <Tooltip contentStyle={{ fontSize: 11, fontFamily: 'IBM Plex Mono, monospace', background: '#fff', border: '1px solid #e2e0dc' }} formatter={(value: unknown) => [`$${Number(value).toFixed(1)}B`, '']} />
+              <Line dataKey="none" name="No Conservation" stroke="#1a1a2e" strokeWidth={2} dot={false} />
+              <Line dataKey="alert" name="Alert" stroke="#d4a017" strokeWidth={2} dot={false} />
+              <Line dataKey="austerity" name="Austerity" stroke="#e67e22" strokeWidth={2} dot={false} />
+              <Line dataKey="emergency" name="Emergency" stroke="#c0392b" strokeWidth={2} dot={false} />
+              {/* Reserve floor reference line */}
+              <Line dataKey={() => m6.reservesFloor} name={`Floor ($${m6.reservesFloor}B)`} stroke="#64748b" strokeWidth={1} strokeDasharray="6 3" dot={false} />
+              <Legend wrapperStyle={{ fontSize: 11 }} />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+        <div className="mt-3 grid grid-cols-4 gap-3 text-center">
+          {(['none', 'alert', 'austerity', 'emergency'] as const).map((level) => (
+            <div key={level} className="bg-input-bg rounded p-2">
+              <div className="text-[10px] text-slate uppercase">{level === 'none' ? 'Normal' : level}</div>
+              <div className="font-mono text-lg font-semibold text-navy">{reserveTimeline.monthsToFloor[level] >= 12 ? '12+' : reserveTimeline.monthsToFloor[level].toFixed(1)}</div>
+              <div className="text-[10px] text-slate">months to floor</div>
+            </div>
+          ))}
+        </div>
+      </Card>
+
+      {/* ══════ Economic Trade-offs ══════ */}
+      <Card title="Economic Trade-offs by Conservation Level">
+        <p className="text-xs text-slate mb-3">
+          Comparison of fuel preservation vs. economic cost at each conservation level. GDP impact is estimated from demand reductions and lockdown effects.
+        </p>
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="border-b border-border">
+                <th className="text-left py-2 pr-3 text-[10px] font-medium text-slate">Metric</th>
+                {economicImpact.map((ei) => (
+                  <th key={ei.level} className={`text-center py-2 px-3 text-[10px] font-medium ${currentLevel === ei.level ? 'text-navy bg-navy/5' : 'text-slate'}`}>
+                    {ei.label} {currentLevel === ei.level && '(current)'}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              <tr className="border-b border-border/30">
+                <td className="py-1.5 pr-3 text-xs text-slate">Days of fuel cover</td>
+                {economicImpact.map((ei) => (
+                  <td key={ei.level} className={`py-1.5 px-3 text-center font-mono ${currentLevel === ei.level ? 'font-semibold text-navy bg-navy/5' : 'text-navy'}`}>
+                    {fmt(ei.daysOfCover, 1)}
+                  </td>
+                ))}
+              </tr>
+              <tr className="border-b border-border/30">
+                <td className="py-1.5 pr-3 text-xs text-slate">Months until reserves floor</td>
+                {economicImpact.map((ei) => (
+                  <td key={ei.level} className={`py-1.5 px-3 text-center font-mono ${currentLevel === ei.level ? 'font-semibold text-navy bg-navy/5' : 'text-navy'}`}>
+                    {ei.monthsToFloor >= 12 ? '12+' : fmt(ei.monthsToFloor, 1)}
+                  </td>
+                ))}
+              </tr>
+              <tr className="border-b border-border/30">
+                <td className="py-1.5 pr-3 text-xs text-slate">Demand reduction</td>
+                {economicImpact.map((ei) => (
+                  <td key={ei.level} className={`py-1.5 px-3 text-center font-mono ${currentLevel === ei.level ? 'font-semibold text-navy bg-navy/5' : 'text-navy'}`}>
+                    {fmt(ei.demandReductionPct, 0)}%
+                  </td>
+                ))}
+              </tr>
+              <tr className="border-b border-border/30">
+                <td className="py-1.5 pr-3 text-xs text-slate">Est. GDP impact</td>
+                {economicImpact.map((ei) => (
+                  <td key={ei.level} className={`py-1.5 px-3 text-center font-mono ${ei.gdpImpactPct < -5 ? 'text-red-muted' : ei.gdpImpactPct < -2 ? 'text-ochre' : 'text-navy'} ${currentLevel === ei.level ? 'font-semibold bg-navy/5' : ''}`}>
+                    {ei.gdpImpactPct === 0 ? '0%' : fmt(ei.gdpImpactPct, 1) + '%'}
+                  </td>
+                ))}
+              </tr>
+              <tr className="border-b border-border/30">
+                <td className="py-1.5 pr-3 text-xs text-slate">Daily economic cost</td>
+                {economicImpact.map((ei) => (
+                  <td key={ei.level} className={`py-1.5 px-3 text-center font-mono ${currentLevel === ei.level ? 'font-semibold text-navy bg-navy/5' : 'text-navy'}`}>
+                    ${fmtInt(Math.round(ei.dailyEconomicCost))}M
+                  </td>
+                ))}
+              </tr>
+              <tr className="border-b border-border/30">
+                <td className="py-1.5 pr-3 text-xs text-slate">Lockdown days/week</td>
+                {economicImpact.map((ei) => (
+                  <td key={ei.level} className={`py-1.5 px-3 text-center font-mono ${currentLevel === ei.level ? 'font-semibold text-navy bg-navy/5' : 'text-navy'}`}>
+                    {ei.lockdownDays}
+                  </td>
+                ))}
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        {/* Reasoning for current level */}
+        <div className="mt-3 bg-input-bg border border-border rounded p-3 text-xs text-foreground leading-relaxed">
+          <span className="font-semibold text-navy">At {economicImpact.find((e) => e.level === currentLevel)?.label}: </span>
+          {economicImpact.find((e) => e.level === currentLevel)?.reasoning}
+        </div>
+      </Card>
+
+      {/* ══════ Advisory Recommendation ══════ */}
+      <div className={`rounded-lg border p-4 ${LEVEL_COLORS[triggerOutput.recommendedLevel]}`}>
+        <div className="flex items-start gap-3">
+          <span className={`mt-0.5 w-3 h-3 rounded-full flex-shrink-0 ${LEVEL_DOT[triggerOutput.recommendedLevel]}`} />
+          <div className="flex-1">
+            <p className="text-sm font-semibold mb-2">
+              Recommendation: {triggerOutput.recommendedLevel}
+            </p>
+            <div className="space-y-1.5">
+              {advisory.map((line, i) => (
+                <div key={i} className="flex items-start gap-2 text-xs leading-relaxed">
+                  <span className="opacity-60 mt-0.5">-</span>
+                  <span>{line}</span>
+                </div>
+              ))}
+            </div>
+            {triggerOutput.hardOverrideActive && (
+              <p className="font-medium text-xs mt-2 opacity-90">Hard override: {triggerOutput.hardOverrideActive}</p>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Old detailed recommendation - kept for component breakdown */}
       <div className={`rounded-lg border p-4 ${LEVEL_COLORS[triggerOutput.recommendedLevel]}`}>
         <div className="flex items-start gap-3">
           <span className={`mt-0.5 w-3 h-3 rounded-full flex-shrink-0 ${LEVEL_DOT[triggerOutput.recommendedLevel]}`} />
