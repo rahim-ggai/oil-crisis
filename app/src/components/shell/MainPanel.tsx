@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { useAppStore } from '@/lib/store';
 import { Dashboard } from '@/components/dashboard/Dashboard';
 import { M1Inventory } from '@/components/modules/M1Inventory';
@@ -19,10 +20,11 @@ import { MapPanel } from '@/components/modules/MapPanel';
 import { LiveTrackingPanel } from '@/components/modules/LiveTrackingPanel';
 import { GlobalMonitorPanel } from '@/components/dashboard/GlobalMonitorPanel';
 
-export function MainPanel() {
-  const activePanel = useAppStore((s) => s.activePanel);
+// Panels that should stay mounted once loaded (expensive to re-initialize)
+const PERSISTENT_PANELS = ['live-tracking', 'map'] as const;
 
-  switch (activePanel) {
+function ActiveContent({ panel }: { panel: string }) {
+  switch (panel) {
     case 'briefing': return <CrisisDecisionHome />;
     case 'oil-prices': return <OilPriceDashboard />;
     case 'dashboard': return <Dashboard />;
@@ -34,12 +36,42 @@ export function MainPanel() {
     case 'm6': return <M6Price />;
     case 'm7': return <M7Conservation />;
     case 'm8': return <M8Trigger />;
-    case 'map': return <MapPanel />;
-    case 'live-tracking': return <LiveTrackingPanel />;
     case 'global-monitor': return <GlobalMonitorPanel />;
     case 'scenarios': return <ScenarioManager />;
     case 'report': return <ReportPanel />;
     case 'formulas': return <FormulasPanel />;
     default: return <Dashboard />;
   }
+}
+
+export function MainPanel() {
+  const activePanel = useAppStore((s) => s.activePanel);
+  // Track which persistent panels have been visited (mount once, never unmount)
+  const [mountedPersistent, setMountedPersistent] = useState<Set<string>>(new Set());
+
+  // Ensure persistent panels get mounted when first visited
+  if (PERSISTENT_PANELS.includes(activePanel as typeof PERSISTENT_PANELS[number]) && !mountedPersistent.has(activePanel)) {
+    setMountedPersistent((prev) => new Set(prev).add(activePanel));
+  }
+
+  const isPersistentActive = PERSISTENT_PANELS.includes(activePanel as typeof PERSISTENT_PANELS[number]);
+
+  return (
+    <>
+      {/* Regular panels — only render the active one */}
+      {!isPersistentActive && <ActiveContent panel={activePanel} />}
+
+      {/* Persistent panels — stay mounted, hidden via CSS when not active */}
+      {(mountedPersistent.has('live-tracking') || activePanel === 'live-tracking') && (
+        <div className={`h-full ${activePanel === 'live-tracking' ? '' : 'hidden'}`}>
+          <LiveTrackingPanel />
+        </div>
+      )}
+      {(mountedPersistent.has('map') || activePanel === 'map') && (
+        <div className={`h-full ${activePanel === 'map' ? '' : 'hidden'}`}>
+          <MapPanel />
+        </div>
+      )}
+    </>
+  );
 }
