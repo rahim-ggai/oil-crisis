@@ -279,6 +279,7 @@ export type ActivePanel =
   | 'm1' | 'm2' | 'm3' | 'm4' | 'm5' | 'm6' | 'm7' | 'm8'
   | 'map'
   | 'live-tracking'
+  | 'global-monitor'
   | 'scenarios'
   | 'report'
   | 'formulas';
