@@ -1,7 +1,28 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import dynamic from 'next/dynamic';
 import { Card } from '@/components/ui/ModulePanel';
+
+const CrisisGlobe = dynamic(
+  () => import('./CrisisGlobe').then((m) => m.CrisisGlobe),
+  {
+    ssr: false,
+    loading: () => <div className="h-[500px] bg-navy-dark rounded-lg flex items-center justify-center text-slate text-sm">Loading globe...</div>,
+  }
+);
+
+const CrisisMap2D = dynamic(
+  () => import('./CrisisMap2D').then((m) => m.CrisisMap2D),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="h-[500px] bg-card rounded-lg flex items-center justify-center text-slate text-sm">
+        Loading map...
+      </div>
+    ),
+  },
+);
 
 // ============================================================
 // Types
@@ -207,6 +228,7 @@ export function GlobalMonitorPanel() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTopic, setActiveTopic] = useState<string>('All');
+  const [mapMode, setMapMode] = useState<'2d' | '3d'>('2d');
 
   const fetchFeeds = useCallback(async () => {
     setLoading(true);
@@ -264,6 +286,42 @@ export function GlobalMonitorPanel() {
           </div>
         )}
       </div>
+
+      {/* ---- Map / Globe Section ---- */}
+      <Card>
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-sm font-semibold text-navy">Crisis Map</h3>
+          <div className="flex gap-1">
+            <button
+              onClick={() => setMapMode('2d')}
+              className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+                mapMode === '2d'
+                  ? 'bg-navy text-white'
+                  : 'bg-input-bg text-navy hover:bg-border'
+              }`}
+            >
+              2D Map
+            </button>
+            <button
+              onClick={() => setMapMode('3d')}
+              className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+                mapMode === '3d'
+                  ? 'bg-navy text-white'
+                  : 'bg-input-bg text-navy hover:bg-border'
+              }`}
+            >
+              3D Globe
+            </button>
+          </div>
+        </div>
+        <div className="h-[500px]">
+          {mapMode === '2d' ? (
+            <CrisisMap2D />
+          ) : (
+            <CrisisGlobe />
+          )}
+        </div>
+      </Card>
 
       {/* ---- Two-column layout ---- */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
