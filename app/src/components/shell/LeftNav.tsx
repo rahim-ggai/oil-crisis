@@ -16,6 +16,7 @@ const NAV_ITEMS: { id: ActivePanel; label: string; shortLabel?: string }[] = [
   { id: 'm7', label: 'M7: Conservation', shortLabel: 'Conservation' },
   { id: 'm8', label: 'M8: Trigger', shortLabel: 'Trigger' },
   { id: 'map', label: 'Ship Tracking', shortLabel: 'Map' },
+  { id: 'live-tracking', label: 'Live Tracking' },
   { id: 'scenarios', label: 'Scenarios' },
   { id: 'report', label: 'Report' },
   { id: 'formulas', label: 'Formulas' },
