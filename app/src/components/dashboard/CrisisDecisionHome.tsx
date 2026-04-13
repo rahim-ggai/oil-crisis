@@ -3,6 +3,9 @@
 import { useMemo, useState, useEffect, useCallback } from 'react';
 import { useAppStore } from '@/lib/store';
 import { Card } from '@/components/ui/ModulePanel';
+import { SupplyFlowDiagram } from '@/components/dashboard/SupplyFlowDiagram';
+import { RadarTradeoff } from '@/components/dashboard/RadarTradeoff';
+import { FuelGauge } from '@/components/dashboard/FuelGauge';
 import { computeTrigger } from '@/lib/calculations/m8-trigger';
 import type { TriggerOutput } from '@/lib/calculations/m8-trigger';
 import {
@@ -916,13 +919,25 @@ export function CrisisDecisionHome() {
 
   // ── Charts ──
 
+  const iranOutput = useMemo(() => {
+    const { computeIranCorridor } = require('@/lib/calculations/m5-iran');
+    return computeIranCorridor(scenario.m5, scenario.baselineMode, scenario.formulaParams);
+  }, [scenario]);
+
   const charts = [
     <Q1Chart key="q1" trigger={trigger} weights={scenario.m8.weights} />,
-    <Q2Chart key="q2" daysOfCover={daysOfCoverData} />,
+    /* Q2: Fuel gauges instead of bar chart */
+    <div key="q2" className="flex items-end justify-center gap-4 py-2">
+      {daysOfCoverData.map((d) => (
+        <FuelGauge key={d.fuel} label={d.fuel} fullLabel={d.fuel === 'HSD' ? 'High Speed Diesel' : d.fuel === 'MS' ? 'Motor Spirit' : d.fuel === 'FO' ? 'Furnace Oil' : 'Jet Fuel'} days={d.days} threshold={d.threshold} maxDays={d.fuel === 'FO' ? 100 : 60} />
+      ))}
+    </div>,
     <Q3Chart key="q3" scenario={scenario} />,
     <Q4Chart key="q4" timeline={reserveTimeline} reservesFloor={m6.reservesFloor} />,
-    <Q5Chart key="q5" scenario={scenario} />,
-    <Q6Chart key="q6" impacts={economicImpacts} />,
+    /* Q5: Supply flow diagram */
+    <SupplyFlowDiagram key="q5" sources={scenario.m4.sources} iranCorridorOpen={scenario.baselineMode === 'iran_permitted_transit'} iranBblDay={iranOutput.totalBblDay} />,
+    /* Q6: Radar chart */
+    <RadarTradeoff key="q6" impacts={economicImpacts} currentLevel={trigger.recommendedLevel === 'NORMAL' ? 'none' : trigger.recommendedLevel.toLowerCase()} />,
   ];
 
   // ── Render ──

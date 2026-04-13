@@ -4,6 +4,9 @@ import { useMemo, useRef, useState, useEffect } from 'react';
 import { useAppStore } from '@/lib/store';
 import { Card } from '@/components/ui/ModulePanel';
 import { readExcelFile, parseDSSP, parseTankerPlan } from '@/lib/excel-import';
+import { CrisisHeroBanner } from '@/components/dashboard/CrisisHeroBanner';
+import { FuelGauge } from '@/components/dashboard/FuelGauge';
+import { FundingWaterfall } from '@/components/dashboard/FundingWaterfall';
 import { computeImportRecommendation, traceImportRecommendation } from '@/lib/calculations/import-recommendation';
 import type { ImportRecommendationParams } from '@/lib/calculations/import-recommendation';
 import { computeSectorAllocation, checkRationingTrigger, getAllocationForLevel, SECTORS, FUEL_TYPES } from '@/lib/calculations/sector-allocation';
@@ -308,6 +311,16 @@ export function Dashboard() {
         )}
       </div>
 
+      {/* Crisis Status Hero Banner */}
+      <CrisisHeroBanner />
+
+      {/* Fuel Gauge Visual */}
+      <div className="flex items-end justify-center gap-6 py-2">
+        <FuelGauge label="HSD" fullLabel="High Speed Diesel" days={hsdDays} threshold={15} maxDays={60} />
+        <FuelGauge label="MS" fullLabel="Motor Spirit (Petrol)" days={msDays} threshold={18} maxDays={60} />
+        <FuelGauge label="FO" fullLabel="Furnace Oil" days={foDays} threshold={30} maxDays={100} />
+      </div>
+
       {/* Vital Signs Cards */}
       <div className="grid grid-cols-3 gap-4">
         {/* 1. Days of Fuel Cover */}
@@ -544,6 +557,21 @@ export function Dashboard() {
         <div className="bg-input-bg border border-border rounded p-3 text-xs text-foreground leading-relaxed">
           <span className="font-semibold text-navy">Reasoning: </span>
           {irResult.reasoning}
+        </div>
+
+        {/* Funding Sources Waterfall */}
+        <div className="mt-4">
+          <FundingWaterfall
+            reserves={irResult.totalFunding - m6.imfAvailable - (m6.saudiDoubled ? m6.saudiDeferredFacility * 2 : m6.saudiDeferredFacility) - m6.chinaSwapLine - m6.barterCapacity / 1000}
+            imf={m6.imfAvailable}
+            saudi={m6.saudiDoubled ? m6.saudiDeferredFacility * 2 : m6.saudiDeferredFacility}
+            china={m6.chinaSwapLine}
+            barter={m6.barterCapacity / 1000}
+            total={irResult.totalFunding}
+            monthlyBudget={irResult.monthlyBudget}
+            perBarrelCost={irResult.perBarrelCost}
+            affordableBarrels={irResult.upperBound}
+          />
         </div>
 
         {/* Formula breakdown */}
