@@ -84,7 +84,10 @@ function fmtChange(change: { amount: number; percent: number } | null): {
 }
 
 function formatDateShort(dateStr: string): string {
+  // Intraday format: "HH:MM" — return as-is
+  if (/^\d{2}:\d{2}$/.test(dateStr)) return dateStr;
   const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return dateStr;
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
@@ -139,12 +142,14 @@ function ChartTooltip({ active, payload, label }: {
   return (
     <div className="bg-card border border-border rounded px-3 py-2 shadow-sm">
       <p className="text-xs text-slate mb-1">
-        {label ? new Date(label).toLocaleDateString('en-US', {
-          weekday: 'short',
-          month: 'short',
-          day: 'numeric',
-          year: 'numeric',
-        }) : ''}
+        {label && /^\d{2}:\d{2}$/.test(label)
+          ? `Today ${label} UTC`
+          : label ? new Date(label).toLocaleDateString('en-US', {
+              weekday: 'short',
+              month: 'short',
+              day: 'numeric',
+              year: 'numeric',
+            }) : ''}
       </p>
       <p className="font-mono text-sm font-semibold text-navy">
         ${fmt(payload[0].value)}/bbl
@@ -159,6 +164,7 @@ function ChartTooltip({ active, payload, label }: {
 
 export function OilPriceDashboard() {
   const [history, setHistory] = useState<PricePoint[]>([]);
+  const [isIntraday, setIsIntraday] = useState(false);
   const [commodities, setCommodities] = useState<Commodity[]>([]);
   const [period, setPeriod] = useState<Period>('past_month');
   const [loadingHistory, setLoadingHistory] = useState(true);
@@ -174,6 +180,7 @@ export function OilPriceDashboard() {
           setError(d.error);
         } else {
           setHistory(d.history || []);
+          setIsIntraday(d.intraday ?? false);
           setError(null);
         }
       })
@@ -366,10 +373,12 @@ export function OilPriceDashboard() {
 
             {/* Chart footer */}
             <div className="mt-2 flex items-center justify-between text-[10px] text-slate">
-              <span>Source: Oil Price API</span>
+              <span>Source: Oil Price API {isIntraday ? '(intraday)' : ''}</span>
               <span>
-                {history.length > 0 &&
-                  `${formatDateShort(history[0].date)} -- ${formatDateShort(history[history.length - 1].date)}`}
+                {history.length > 0 && (isIntraday
+                  ? `Today ${history[0].date} -- ${history[history.length - 1].date} UTC`
+                  : `${formatDateShort(history[0].date)} -- ${formatDateShort(history[history.length - 1].date)}`
+                )}
               </span>
             </div>
           </>

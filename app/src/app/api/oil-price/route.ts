@@ -40,17 +40,37 @@ export async function GET(request: NextRequest) {
     }
 
     if (type === 'history') {
-      const data = await fetchOilPrice('/prices/past_month', code, apiKey);
-      // Aggregate to daily prices (take last price per day)
-      const byDay = new Map<string, number>();
-      for (const p of data.data.prices) {
-        const day = p.created_at.slice(0, 10);
-        byDay.set(day, p.price);
+      // Try past_month first, fall back to past_week, then past_day
+      let data;
+      try { data = await fetchOilPrice('/prices/past_month', code, apiKey); } catch { data = null; }
+
+      const prices = data?.data?.prices ?? [];
+
+      // Check how many unique days we have
+      const uniqueDays = new Set(prices.map((p: { created_at: string }) => p.created_at.slice(0, 10)));
+
+      let history;
+      if (uniqueDays.size > 1) {
+        // Multi-day data: aggregate to daily
+        const byDay = new Map<string, number>();
+        for (const p of prices) {
+          const day = p.created_at.slice(0, 10);
+          byDay.set(day, p.price);
+        }
+        history = Array.from(byDay.entries())
+          .map(([date, price]) => ({ date, price }))
+          .sort((a, b) => a.date.localeCompare(b.date));
+      } else {
+        // Single day / intraday: show hourly points with time labels
+        history = prices
+          .map((p: { created_at: string; price: number }) => ({
+            date: p.created_at.slice(11, 16), // "HH:MM"
+            price: p.price,
+          }))
+          .reverse(); // oldest first
       }
-      const history = Array.from(byDay.entries())
-        .map(([date, price]) => ({ date, price }))
-        .sort((a, b) => a.date.localeCompare(b.date));
-      return NextResponse.json({ history, code });
+
+      return NextResponse.json({ history, code, intraday: uniqueDays.size <= 1 });
     }
 
     if (type === 'dashboard') {
