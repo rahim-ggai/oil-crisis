@@ -284,7 +284,7 @@ export function M6Price() {
 
           {/* Affordability Curve */}
           <Card title="Affordability Curve -- Affordable Barrels vs. Brent Multiplier">
-            <div className="h-[380px]">
+            <div className="h-95">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={chartData} margin={{ top: 10, right: 30, left: 10, bottom: 5 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#e2e0dc" />

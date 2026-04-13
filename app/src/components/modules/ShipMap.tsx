@@ -76,20 +76,6 @@ const startIcon = new L.Icon({
   popupAnchor: [0, -12],
 });
 
-const destinationIcon = new L.Icon({
-  iconUrl:
-    "data:image/svg+xml;base64," +
-    btoa(`
-    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="#ef4444" stroke="white" stroke-width="2">
-      <circle cx="12" cy="12" r="10"/>
-      <text x="12" y="16" text-anchor="middle" fill="white" font-size="12" font-weight="bold">D</text>
-    </svg>
-  `),
-  iconSize: [24, 24],
-  iconAnchor: [12, 12],
-  popupAnchor: [0, -12],
-});
-
 function MapUpdater({ vessels }: { vessels: VesselPosition[] }) {
   const map = useMap();
 
@@ -115,7 +101,7 @@ export function ShipMap({
   const defaultZoom = 6;
 
   return (
-    <div className="h-[600px] w-full rounded-lg overflow-hidden border border-gray-300">
+    <div className="h-150 w-full rounded-lg overflow-hidden border border-gray-300">
       <MapContainer
         center={defaultCenter}
         zoom={defaultZoom}
@@ -139,7 +125,7 @@ export function ShipMap({
             }}
           >
             <Popup>
-              <div className="min-w-[200px]">
+              <div className="min-w-50">
                 <h3 className="font-bold text-base mb-2">{vessel.name}</h3>
                 <div className="space-y-1 text-sm">
                   <p>

@@ -1,17 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import dynamic from "next/dynamic";
 import { ModulePanel, Card } from "@/components/ui/ModulePanel";
 import { MapPin, Navigation, Clock, Anchor } from "lucide-react";
-import { getAllMockVessels, generateMockTrack } from "@/lib/mockVesselData";
 
 const ShipMap = dynamic(
   () => import("./ShipMap").then((mod) => ({ default: mod.ShipMap })),
   {
     ssr: false,
     loading: () => (
-      <div className="h-[600px] w-full rounded-lg border border-gray-300 bg-gray-100 flex items-center justify-center">
+      <div className="h-150 w-full rounded-lg border border-gray-300 bg-gray-100 flex items-center justify-center">
         <p className="text-gray-600">Loading map...</p>
       </div>
     ),
@@ -43,6 +42,18 @@ interface VesselTrack {
   course: number;
 }
 
+// Default IMO numbers to load on mount
+const DEFAULT_IMOS = [
+  "9089229",
+  "9839492",
+  "9976769",
+  "9137284",
+  "8794310",
+  "9171058",
+  "9974917",
+  "8967656",
+];
+
 export function MapPanel() {
   const [vessels, setVessels] = useState<VesselPosition[]>([]);
   const [vesselTracks, setVesselTracks] = useState<
@@ -51,7 +62,8 @@ export function MapPanel() {
   const [selectedVessel, setSelectedVessel] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [loadingDemo, setLoadingDemo] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(false);
+  const [initialLoadDone, setInitialLoadDone] = useState(false);
 
   const fetchVesselPosition = async (imo: string) => {
     setLoading(true);
@@ -164,23 +176,30 @@ export function MapPanel() {
     }
   };
 
-  const loadDemoVessels = () => {
-    setLoadingDemo(true);
-    setError(null);
+  // Auto-load default vessels on mount
+  useEffect(() => {
+    if (!initialLoadDone) {
+      setInitialLoadDone(true);
+      setInitialLoading(true);
 
-    // Use mock data for demo
-    const mockVessels = getAllMockVessels();
-    setVessels(mockVessels as VesselPosition[]);
+      // Load each default IMO one by one
+      const loadVessels = async () => {
+        for (const imo of DEFAULT_IMOS) {
+          try {
+            await fetchVesselPosition(imo);
+            // Small delay between requests to avoid rate limiting
+            await new Promise((resolve) => setTimeout(resolve, 500));
+          } catch (err) {
+            console.error(`Failed to load vessel ${imo}:`, err);
+          }
+        }
+        setInitialLoading(false);
+      };
 
-    // Pre-generate tracks for all vessels
-    const tracks: Record<string, VesselTrack[]> = {};
-    mockVessels.forEach((vessel) => {
-      tracks[vessel.imo] = generateMockTrack(vessel) as VesselTrack[];
-    });
-    setVesselTracks(tracks);
-
-    setLoadingDemo(false);
-  };
+      loadVessels();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialLoadDone]);
 
   return (
     <ModulePanel
@@ -188,6 +207,17 @@ export function MapPanel() {
       subtitle="Track oil tankers and cargo vessels in real-time using MyShipTracking API"
     >
       <div className="space-y-6">
+        {initialLoading && vessels.length === 0 && (
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <div className="flex items-center gap-3">
+              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
+              <p className="text-blue-800 font-medium">
+                Loading {DEFAULT_IMOS.length} vessels... Please wait
+              </p>
+            </div>
+          </div>
+        )}
+
         <Card
           title={`Search Vessel ${vessels.length > 0 ? `(${vessels.length} tracked)` : ""}`}
         >
@@ -244,30 +274,6 @@ export function MapPanel() {
               <p className="text-xs text-gray-500 mt-2">
                 Enter IMO numbers one by one to track multiple vessels. Routes
                 shown automatically.
-              </p>
-            </div>
-
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-gray-300"></div>
-              </div>
-              <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-white text-gray-500">OR</span>
-              </div>
-            </div>
-
-            <div>
-              <button
-                onClick={loadDemoVessels}
-                disabled={loadingDemo}
-                className="w-full px-4 py-3 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed font-medium"
-              >
-                {loadingDemo
-                  ? "Loading Demo Vessels..."
-                  : "🚢 Load Demo Vessels (5 Ships)"}
-              </button>
-              <p className="text-xs text-gray-500 mt-2 text-center">
-                Automatically loads 5 major cargo vessels for demonstration
               </p>
             </div>
 

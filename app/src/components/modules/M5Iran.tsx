@@ -292,7 +292,7 @@ export function M5Iran() {
 
           {/* Stacked bar chart */}
           <Card title="Corridor Throughput Composition">
-            <div className="h-[280px]">
+            <div className="h-70">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={chartData} margin={{ top: 10, right: 20, left: 10, bottom: 5 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#e2e0dc" />
