@@ -121,24 +121,96 @@ interface AIReasoningPanelProps {
   onReanalyze: () => void;
 }
 
+/** Parse Claude's markdown-style text into structured blocks for rich rendering */
+function parseAIResponse(text: string): { type: 'heading' | 'bullet' | 'text'; content: string }[] {
+  const blocks: { type: 'heading' | 'bullet' | 'text'; content: string }[] = [];
+  const lines = text.split('\n');
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+    // **Heading:** or **Heading**
+    if (/^\*\*[^*]+\*\*:?\s*$/.test(trimmed)) {
+      blocks.push({ type: 'heading', content: trimmed.replace(/\*\*/g, '').replace(/:$/, '') });
+    }
+    // - bullet point (may contain **bold** inline)
+    else if (/^[-•]\s+/.test(trimmed)) {
+      blocks.push({ type: 'bullet', content: trimmed.replace(/^[-•]\s+/, '') });
+    }
+    // Regular text (may start with **Label:** content)
+    else {
+      blocks.push({ type: 'text', content: trimmed });
+    }
+  }
+  return blocks;
+}
+
+/** Render inline bold markers */
+function renderInlineBold(text: string) {
+  const parts = text.split(/(\*\*[^*]+\*\*)/);
+  return parts.map((part, i) => {
+    if (part.startsWith('**') && part.endsWith('**')) {
+      return <strong key={i} className="font-semibold text-navy">{part.slice(2, -2)}</strong>;
+    }
+    return <span key={i}>{part}</span>;
+  });
+}
+
+/** Color-coded heading based on content */
+function getHeadingStyle(heading: string): string {
+  const h = heading.toLowerCase();
+  if (h.includes('recommendation')) return 'bg-navy/10 text-navy border-l-4 border-navy';
+  if (h.includes('risk')) return 'bg-red-muted/8 text-red-muted border-l-4 border-red-muted';
+  if (h.includes('monitor')) return 'bg-accent-blue/8 text-accent-blue border-l-4 border-accent-blue';
+  if (h.includes('reasoning')) return 'bg-ochre/8 text-ochre border-l-4 border-ochre';
+  return 'bg-slate-light/10 text-navy border-l-4 border-slate-light';
+}
+
 function AIReasoningPanel({
   reasoning,
   loading,
   badge,
   onReanalyze,
 }: AIReasoningPanelProps) {
+  const blocks = reasoning ? parseAIResponse(reasoning) : [];
+
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-3">
       {loading ? (
         <LoadingSkeleton />
+      ) : reasoning && !reasoning.startsWith('AI analysis unavailable') ? (
+        <div className="space-y-2">
+          {blocks.map((block, i) => {
+            if (block.type === 'heading') {
+              return (
+                <div key={i} className={`px-3 py-2 rounded-r text-xs font-bold uppercase tracking-wider mt-3 first:mt-0 ${getHeadingStyle(block.content)}`}>
+                  {block.content}
+                </div>
+              );
+            }
+            if (block.type === 'bullet') {
+              return (
+                <div key={i} className="flex items-start gap-2 text-sm leading-relaxed pl-2">
+                  <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-navy/40 flex-shrink-0" />
+                  <span>{renderInlineBold(block.content)}</span>
+                </div>
+              );
+            }
+            return (
+              <p key={i} className="text-sm leading-relaxed">{renderInlineBold(block.content)}</p>
+            );
+          })}
+        </div>
       ) : reasoning ? (
-        <div className="text-sm leading-relaxed text-foreground whitespace-pre-line">
+        <div className="bg-red-muted/5 border border-red-muted/20 rounded p-3 text-xs text-red-muted">
           {reasoning}
         </div>
       ) : (
-        <p className="text-sm text-slate">Awaiting analysis...</p>
+        <div className="bg-input-bg border border-border rounded p-4 text-center">
+          <p className="text-sm text-slate">Awaiting AI analysis...</p>
+          <p className="text-[10px] text-slate/60 mt-1">Click Re-analyze or set ANTHROPIC_API_KEY</p>
+        </div>
       )}
-      <div className="flex items-center gap-3 mt-1">
+      <div className="flex items-center gap-3 mt-2">
         {badge && !loading && <RecommendationBadge label={badge} />}
         <button
           onClick={onReanalyze}
