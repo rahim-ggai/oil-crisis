@@ -14,12 +14,14 @@ import { ScenarioManager } from '@/components/scenarios/ScenarioManager';
 import { ReportPanel } from '@/components/report/ReportPanel';
 import { FormulasPanel } from '@/components/modules/FormulasPanel';
 import { CrisisDecisionHome } from '@/components/dashboard/CrisisDecisionHome';
+import { OilPriceDashboard } from '@/components/dashboard/OilPriceDashboard';
 
 export function MainPanel() {
   const activePanel = useAppStore((s) => s.activePanel);
 
   switch (activePanel) {
     case 'briefing': return <CrisisDecisionHome />;
+    case 'oil-prices': return <OilPriceDashboard />;
     case 'dashboard': return <Dashboard />;
     case 'm1': return <M1Inventory />;
     case 'm2': return <M2Pipeline />;
