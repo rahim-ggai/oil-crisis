@@ -48,7 +48,7 @@ interface AppStore {
 }
 
 export const useAppStore = create<AppStore>((set, get) => ({
-  activePanel: 'dashboard',
+  activePanel: 'briefing',
   setActivePanel: (panel) => set({ activePanel: panel }),
 
   scenario: { ...DEFAULT_SCENARIO },

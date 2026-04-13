@@ -13,11 +13,13 @@ import { M8Trigger } from '@/components/modules/M8Trigger';
 import { ScenarioManager } from '@/components/scenarios/ScenarioManager';
 import { ReportPanel } from '@/components/report/ReportPanel';
 import { FormulasPanel } from '@/components/modules/FormulasPanel';
+import { CrisisDecisionHome } from '@/components/dashboard/CrisisDecisionHome';
 
 export function MainPanel() {
   const activePanel = useAppStore((s) => s.activePanel);
 
   switch (activePanel) {
+    case 'briefing': return <CrisisDecisionHome />;
     case 'dashboard': return <Dashboard />;
     case 'm1': return <M1Inventory />;
     case 'm2': return <M2Pipeline />;

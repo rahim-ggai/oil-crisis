@@ -4,6 +4,7 @@ import { useAppStore } from '@/lib/store';
 import type { ActivePanel } from '@/types';
 
 const NAV_ITEMS: { id: ActivePanel; label: string; shortLabel?: string }[] = [
+  { id: 'briefing', label: 'Briefing' },
   { id: 'dashboard', label: 'Dashboard' },
   { id: 'm1', label: 'M1: Inventory', shortLabel: 'Inventory' },
   { id: 'm2', label: 'M2: Pipeline', shortLabel: 'Pipeline' },
