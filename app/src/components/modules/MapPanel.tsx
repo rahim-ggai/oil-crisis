@@ -4,14 +4,13 @@ import { useState, useEffect } from "react";
 import dynamic from "next/dynamic";
 import { ModulePanel, Card } from "@/components/ui/ModulePanel";
 import { MapPin, Navigation, Clock, Anchor } from "lucide-react";
-import { getAllMockVessels, generateMockTrack } from "@/lib/mockVesselData";
 
 const ShipMap = dynamic(
   () => import("./ShipMap").then((mod) => ({ default: mod.ShipMap })),
   {
     ssr: false,
     loading: () => (
-      <div className="h-[600px] w-full rounded-lg border border-gray-300 bg-gray-100 flex items-center justify-center">
+      <div className="h-150 w-full rounded-lg border border-gray-300 bg-gray-100 flex items-center justify-center">
         <p className="text-gray-600">Loading map...</p>
       </div>
     ),
@@ -63,7 +62,7 @@ export function MapPanel() {
   const [selectedVessel, setSelectedVessel] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [loadingDemo, setLoadingDemo] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(false);
   const [initialLoadDone, setInitialLoadDone] = useState(false);
 
   const fetchVesselPosition = async (imo: string) => {
@@ -181,7 +180,7 @@ export function MapPanel() {
   useEffect(() => {
     if (!initialLoadDone) {
       setInitialLoadDone(true);
-      setLoadingDemo(true);
+      setInitialLoading(true);
 
       // Load each default IMO one by one
       const loadVessels = async () => {
@@ -194,7 +193,7 @@ export function MapPanel() {
             console.error(`Failed to load vessel ${imo}:`, err);
           }
         }
-        setLoadingDemo(false);
+        setInitialLoading(false);
       };
 
       loadVessels();
@@ -202,31 +201,13 @@ export function MapPanel() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialLoadDone]);
 
-  const loadDemoVessels = () => {
-    setLoadingDemo(true);
-    setError(null);
-
-    // Use mock data for demo
-    const mockVessels = getAllMockVessels();
-    setVessels(mockVessels as VesselPosition[]);
-
-    // Pre-generate tracks for all vessels
-    const tracks: Record<string, VesselTrack[]> = {};
-    mockVessels.forEach((vessel) => {
-      tracks[vessel.imo] = generateMockTrack(vessel) as VesselTrack[];
-    });
-    setVesselTracks(tracks);
-
-    setLoadingDemo(false);
-  };
-
   return (
     <ModulePanel
       title="Ship Tracking Map"
       subtitle="Track oil tankers and cargo vessels in real-time using MyShipTracking API"
     >
       <div className="space-y-6">
-        {loadingDemo && vessels.length === 0 && (
+        {initialLoading && vessels.length === 0 && (
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
             <div className="flex items-center gap-3">
               <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
@@ -293,30 +274,6 @@ export function MapPanel() {
               <p className="text-xs text-gray-500 mt-2">
                 Enter IMO numbers one by one to track multiple vessels. Routes
                 shown automatically.
-              </p>
-            </div>
-
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-gray-300"></div>
-              </div>
-              <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-white text-gray-500">OR</span>
-              </div>
-            </div>
-
-            <div>
-              <button
-                onClick={loadDemoVessels}
-                disabled={loadingDemo}
-                className="w-full px-4 py-3 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed font-medium"
-              >
-                {loadingDemo
-                  ? "Loading Demo Vessels..."
-                  : "🚢 Load Demo Vessels (5 Ships)"}
-              </button>
-              <p className="text-xs text-gray-500 mt-2 text-center">
-                Automatically loads 5 major cargo vessels for demonstration
               </p>
             </div>
 

@@ -23,7 +23,7 @@ export function LeftNav() {
   const { activePanel, setActivePanel } = useAppStore();
 
   return (
-    <nav className="w-48 bg-card border-r border-border flex-shrink-0 overflow-y-auto no-print">
+    <nav className="w-48 bg-card border-r border-border shrink-0 overflow-y-auto no-print">
       <div className="py-2">
         {NAV_ITEMS.map((item) => (
           <button
