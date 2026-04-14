@@ -195,7 +195,7 @@ export const DEFAULT_M7: M7State = {
 // Module 8 — Dynamic Trigger Logic Defaults
 // ============================================================
 export const DEFAULT_M8: M8State = {
-  weights: { wD: 0.40, wP: 0.25, wS: 0.15, wA: 0.10, wI: 0.10 },
+  weights: { wD: 0.25, wP: 0.30, wS: 0.30, wA: 0.05, wI: 0.05 },
   manualOverride: null,
   deEscalationDays: 0,
 };
@@ -236,7 +236,7 @@ export const DEFAULT_FORMULA_PARAMS: FormulaParams = {
   // M8 thresholds
   m8_stressD_maxDays: 30,
   m8_stressP_maxMultiplier: 4,
-  m8_bufferDiscount: 0.5,
+  m8_bufferDiscount: 0.3,
   m8_thresholdAlert: 25,
   m8_thresholdAusterity: 50,
   m8_thresholdEmergency: 75,
