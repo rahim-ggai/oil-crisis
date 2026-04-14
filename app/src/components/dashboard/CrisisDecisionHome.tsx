@@ -4,6 +4,7 @@ import { useMemo, useState, useEffect, useCallback } from 'react';
 import { useAppStore } from '@/lib/store';
 import { Card } from '@/components/ui/ModulePanel';
 import { SupplyFlowDiagram } from '@/components/dashboard/SupplyFlowDiagram';
+import { DieselAllocationFlow } from '@/components/dashboard/DieselAllocationFlow';
 import { RadarTradeoff } from '@/components/dashboard/RadarTradeoff';
 import { FuelGauge } from '@/components/dashboard/FuelGauge';
 import { computeTrigger } from '@/lib/calculations/m8-trigger';
@@ -1125,8 +1126,21 @@ export function CrisisDecisionHome() {
     </Card>,
     <Q3Chart key="q3" scenario={scenario} />,
     <Q4Chart key="q4" timeline={reserveTimeline} reservesFloor={m6.reservesFloor} />,
-    /* Q5: Supply flow diagram */
-    <SupplyFlowDiagram key="q5" sources={scenario.m4.sources} iranCorridorOpen={scenario.baselineMode === 'iran_permitted_transit'} iranBblDay={iranOutput.totalBblDay} />,
+    /* Q5: Diesel allocation flow — how HSD is distributed to sectors */
+    (() => {
+      const currentLevelForAlloc = trigger.recommendedLevel === 'NORMAL' ? 'none' : trigger.recommendedLevel.toLowerCase() as ConservationLevel;
+      const alloc = getAllocationForLevel(currentLevelForAlloc);
+      const hsdReduction = currentLevelForAlloc === 'alert' ? m7.alertReductions.hsd
+        : currentLevelForAlloc === 'austerity' ? m7.austerityReductions.hsd
+        : currentLevelForAlloc === 'emergency' ? m7.emergencyReductions.hsd : 0;
+      const totalHsdBblDay = m1.hsdDailyConsumption * 7.46 * (1 - hsdReduction);
+      const sectors = SECTORS.filter(s => alloc.HSD[s] > 0).map(s => ({
+        name: s,
+        pct: alloc.HSD[s],
+        bblDay: totalHsdBblDay * alloc.HSD[s] / 100,
+      }));
+      return <DieselAllocationFlow key="q5" totalHsdBblDay={totalHsdBblDay} sectors={sectors} level={trigger.recommendedLevel} />;
+    })(),
     /* Q6: Radar chart */
     <RadarTradeoff key="q6" impacts={economicImpacts} currentLevel={trigger.recommendedLevel === 'NORMAL' ? 'none' : trigger.recommendedLevel.toLowerCase()} />,
   ];
