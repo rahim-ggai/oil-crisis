@@ -9,6 +9,7 @@ import { FuelGauge } from '@/components/dashboard/FuelGauge';
 import { computeTrigger } from '@/lib/calculations/m8-trigger';
 import { computeIranCorridor } from '@/lib/calculations/m5-iran';
 import type { TriggerOutput } from '@/lib/calculations/m8-trigger';
+import type { ConservationMatrix } from '@/types';
 import {
   getDaysOfCover,
   computeDepletionCurve,
@@ -292,12 +293,101 @@ const STRESS_LABELS: Record<string, string> = {
   bufferI: 'Iran Corridor',
 };
 
-function Q1Chart({ trigger, daysOfCover, priceRatio, currentBrent, preCrisisBrent }: {
+// ── Visual icon representations for conservation parameters ──
+
+const PARAM_ICONS: Record<string, { icon: string; unit: string }> = {
+  privateVehicles: { icon: '\u{1F697}', unit: 'Private vehicles' },    // won't use emoji — use SVG text below
+  goodsTransport: { icon: 'T', unit: 'Goods transport' },
+  industryAllocation: { icon: 'I', unit: 'Industry' },
+  publicTransport: { icon: 'B', unit: 'Public transit' },
+  powerGeneration: { icon: 'P', unit: 'Power generation' },
+  lockdownDays: { icon: 'L', unit: 'Lockdown' },
+  agriculture: { icon: 'A', unit: 'Agriculture' },
+  aviation: { icon: 'F', unit: 'Aviation' },
+};
+
+// Visual bar for a conservation parameter — shows filled vs unfilled units
+function ConservationParamVisual({ paramKey, alert, austerity, emergency }: {
+  paramKey: string;
+  alert: string;
+  austerity: string;
+  emergency: string;
+}) {
+  // Extract percentage from policy text (e.g., "90% operational" → 90, "Complete ban" → 0)
+  function extractPct(text: string): number {
+    if (text.toLowerCase().includes('complete ban') || text.toLowerCase().includes('none')) return 0;
+    if (text.toLowerCase().includes('normal') || text.toLowerCase().includes('full')) return 100;
+    const match = text.match(/(\d+)%/);
+    if (match) return parseInt(match[1]);
+    if (text.toLowerCase().includes('odd/even')) return 50;
+    if (text.toLowerCase().includes('weekend driving ban')) return 30;
+    if (text.toLowerCase().includes('1 day/week')) return 85;
+    if (text.toLowerCase().includes('2 days/week')) return 71;
+    if (text.toLowerCase().includes('expanded')) return 110;
+    if (text.toLowerCase().includes('24/7')) return 120;
+    if (text.toLowerCase().includes('cut 40%')) return 60;
+    if (text.toLowerCase().includes('cut 80%')) return 20;
+    return 50;
+  }
+
+  const info = PARAM_ICONS[paramKey] || { icon: '?', unit: paramKey };
+  const alertPct = extractPct(alert);
+  const austerityPct = extractPct(austerity);
+  const emergencyPct = extractPct(emergency);
+
+  // Show 10 units, fill proportionally
+  const totalUnits = 10;
+
+  function renderUnits(pct: number, color: string) {
+    const filled = Math.round((pct / 100) * totalUnits);
+    return (
+      <div className="flex gap-0.5">
+        {Array.from({ length: totalUnits }, (_, i) => (
+          <div
+            key={i}
+            className="w-3 h-5 rounded-sm transition-all"
+            style={{
+              backgroundColor: i < filled ? color : '#e2e0dc',
+              opacity: i < filled ? 0.9 : 0.3,
+            }}
+          />
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-3 py-1.5 border-b border-border/30 last:border-0">
+      <div className="w-24 flex-shrink-0">
+        <span className="text-[10px] font-medium text-navy">{info.unit}</span>
+      </div>
+      <div className="flex-1 grid grid-cols-3 gap-2">
+        <div>
+          <div className="text-[8px] text-slate mb-0.5">Alert</div>
+          {renderUnits(alertPct, '#d4a017')}
+        </div>
+        <div>
+          <div className="text-[8px] text-slate mb-0.5">Austerity</div>
+          {renderUnits(austerityPct, '#e67e22')}
+        </div>
+        <div>
+          <div className="text-[8px] text-slate mb-0.5">Emergency</div>
+          {renderUnits(emergencyPct, '#c0392b')}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Q1Chart({ trigger, daysOfCover, priceRatio, currentBrent, preCrisisBrent, m7Alert, m7Austerity, m7Emergency }: {
   trigger: TriggerOutput;
   daysOfCover: number;
   priceRatio: number;
   currentBrent: number;
   preCrisisBrent: number;
+  m7Alert: ConservationMatrix;
+  m7Austerity: ConservationMatrix;
+  m7Emergency: ConservationMatrix;
 }) {
   const daysColor = daysOfCover > 18 ? '#27ae60' : daysOfCover > 12 ? '#d4a017' : '#c0392b';
   const priceColor = priceRatio < 1.5 ? '#27ae60' : priceRatio < 2.5 ? '#d4a017' : '#c0392b';
@@ -350,6 +440,62 @@ function Q1Chart({ trigger, daysOfCover, priceRatio, currentBrent, preCrisisBren
           <p className="text-center font-mono text-lg font-semibold" style={{ color: priceColor }}>
             {fmt(priceRatio, 2)}x (${fmt(currentBrent, 0)}/bbl)
           </p>
+        </div>
+      </div>
+
+      {/* Conservation Strategy Visual */}
+      <div className="mt-4 pt-4 border-t border-border">
+        <h4 className="text-xs font-semibold text-navy uppercase tracking-wide mb-3">
+          Conservation Strategy by Parameter
+        </h4>
+        <p className="text-[10px] text-slate mb-3">
+          Each row shows capacity remaining (filled blocks out of 10) at each conservation level. Fewer blocks = more restriction.
+        </p>
+
+        {/* Visual bars */}
+        <div className="mb-4">
+          {(['privateVehicles', 'goodsTransport', 'industryAllocation', 'publicTransport', 'powerGeneration', 'lockdownDays', 'agriculture', 'aviation'] as const).map((key) => (
+            <ConservationParamVisual
+              key={key}
+              paramKey={key}
+              alert={m7Alert[key]}
+              austerity={m7Austerity[key]}
+              emergency={m7Emergency[key]}
+            />
+          ))}
+        </div>
+
+        {/* Summary table */}
+        <div className="overflow-x-auto">
+          <table className="w-full text-[10px]">
+            <thead>
+              <tr className="border-b border-border">
+                <th className="text-left py-1 pr-2 font-medium text-slate">Parameter</th>
+                <th className="text-left py-1 px-2 font-medium text-ochre">Alert</th>
+                <th className="text-left py-1 px-2 font-medium text-[#e67e22]">Austerity</th>
+                <th className="text-left py-1 px-2 font-medium text-red-muted">Emergency</th>
+              </tr>
+            </thead>
+            <tbody>
+              {([
+                ['Private Vehicles', 'privateVehicles'],
+                ['Goods Transport', 'goodsTransport'],
+                ['Industry', 'industryAllocation'],
+                ['Public Transport', 'publicTransport'],
+                ['Power Generation', 'powerGeneration'],
+                ['Lockdown Days', 'lockdownDays'],
+                ['Agriculture', 'agriculture'],
+                ['Aviation', 'aviation'],
+              ] as const).map(([label, key]) => (
+                <tr key={key} className="border-b border-border/30">
+                  <td className="py-1 pr-2 font-medium text-navy">{label}</td>
+                  <td className="py-1 px-2 text-slate">{m7Alert[key]}</td>
+                  <td className="py-1 px-2 text-slate">{m7Austerity[key]}</td>
+                  <td className="py-1 px-2 text-slate">{m7Emergency[key]}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </div>
     </Card>
@@ -958,6 +1104,9 @@ export function CrisisDecisionHome() {
       priceRatio={m6.currentBrentSpot / m6.preCrisisBrent}
       currentBrent={m6.currentBrentSpot}
       preCrisisBrent={m6.preCrisisBrent}
+      m7Alert={m7.alertMatrix}
+      m7Austerity={m7.austerityMatrix}
+      m7Emergency={m7.emergencyMatrix}
     />,
     /* Q2: Fuel gauges instead of bar chart */
     <div key="q2" className="flex items-end justify-center gap-4 py-2">
