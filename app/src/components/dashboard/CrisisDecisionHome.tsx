@@ -407,9 +407,16 @@ function Q1Chart({ trigger, daysOfCover, priceRatio, currentBrent, preCrisisBren
               <CartesianGrid strokeDasharray="3 3" stroke="#e2e0dc" horizontal={true} vertical={false} />
               <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#64748b' }} />
               <YAxis domain={[0, 40]} tick={{ fontSize: 10, fill: '#64748b' }} tickFormatter={(v: number) => `${v}d`} />
-              <ReferenceLine y={18} stroke="#d4a017" strokeDasharray="6 3" strokeWidth={1.5} label={{ value: 'Alert (18d)', position: 'right', fontSize: 9, fill: '#d4a017' }} />
-              <ReferenceLine y={12} stroke="#e67e22" strokeDasharray="6 3" strokeWidth={1.5} label={{ value: 'Austerity (12d)', position: 'right', fontSize: 9, fill: '#e67e22' }} />
-              <ReferenceLine y={7} stroke="#c0392b" strokeDasharray="6 3" strokeWidth={1.5} label={{ value: 'Emergency (7d)', position: 'right', fontSize: 9, fill: '#c0392b' }} />
+              {/* Show only the triggered threshold */}
+              {daysOfCover <= 7 ? (
+                <ReferenceLine y={7} stroke="#c0392b" strokeDasharray="6 3" strokeWidth={2} label={{ value: 'EMERGENCY (7d)', position: 'right', fontSize: 9, fill: '#c0392b', fontWeight: 700 }} />
+              ) : daysOfCover <= 12 ? (
+                <ReferenceLine y={12} stroke="#e67e22" strokeDasharray="6 3" strokeWidth={2} label={{ value: 'AUSTERITY (12d)', position: 'right', fontSize: 9, fill: '#e67e22', fontWeight: 700 }} />
+              ) : daysOfCover <= 18 ? (
+                <ReferenceLine y={18} stroke="#d4a017" strokeDasharray="6 3" strokeWidth={2} label={{ value: 'ALERT (18d)', position: 'right', fontSize: 9, fill: '#d4a017', fontWeight: 700 }} />
+              ) : (
+                <ReferenceLine y={18} stroke="#d4a017" strokeDasharray="6 3" strokeWidth={1} label={{ value: 'Alert threshold (18d)', position: 'right', fontSize: 8, fill: '#d4a017' }} />
+              )}
               <Tooltip formatter={(value: unknown) => [`${fmt(Number(value), 1)} days`, 'Days of Cover']} contentStyle={{ fontSize: 11, background: '#fff', border: '1px solid #e2e0dc' }} />
               <Bar dataKey="value" fill={daysColor} radius={[4, 4, 0, 0]} barSize={60}>
                 <Cell fill={daysColor} />
@@ -429,9 +436,16 @@ function Q1Chart({ trigger, daysOfCover, priceRatio, currentBrent, preCrisisBren
               <CartesianGrid strokeDasharray="3 3" stroke="#e2e0dc" horizontal={true} vertical={false} />
               <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#64748b' }} />
               <YAxis domain={[0, 5]} tick={{ fontSize: 10, fill: '#64748b' }} tickFormatter={(v: number) => `${v}x`} />
-              <ReferenceLine y={1.5} stroke="#d4a017" strokeDasharray="6 3" strokeWidth={1.5} label={{ value: 'Alert (1.5x)', position: 'right', fontSize: 9, fill: '#d4a017' }} />
-              <ReferenceLine y={2.5} stroke="#e67e22" strokeDasharray="6 3" strokeWidth={1.5} label={{ value: 'Austerity (2.5x)', position: 'right', fontSize: 9, fill: '#e67e22' }} />
-              <ReferenceLine y={4.0} stroke="#c0392b" strokeDasharray="6 3" strokeWidth={1.5} label={{ value: 'Emergency (4x)', position: 'right', fontSize: 9, fill: '#c0392b' }} />
+              {/* Show only the triggered threshold */}
+              {priceRatio >= 4.0 ? (
+                <ReferenceLine y={4.0} stroke="#c0392b" strokeDasharray="6 3" strokeWidth={2} label={{ value: 'EMERGENCY (4x)', position: 'right', fontSize: 9, fill: '#c0392b', fontWeight: 700 }} />
+              ) : priceRatio >= 2.5 ? (
+                <ReferenceLine y={2.5} stroke="#e67e22" strokeDasharray="6 3" strokeWidth={2} label={{ value: 'AUSTERITY (2.5x)', position: 'right', fontSize: 9, fill: '#e67e22', fontWeight: 700 }} />
+              ) : priceRatio >= 1.5 ? (
+                <ReferenceLine y={1.5} stroke="#d4a017" strokeDasharray="6 3" strokeWidth={2} label={{ value: 'ALERT (1.5x)', position: 'right', fontSize: 9, fill: '#d4a017', fontWeight: 700 }} />
+              ) : (
+                <ReferenceLine y={1.5} stroke="#d4a017" strokeDasharray="6 3" strokeWidth={1} label={{ value: 'Alert threshold (1.5x)', position: 'right', fontSize: 8, fill: '#d4a017' }} />
+              )}
               <Tooltip formatter={(value: unknown) => [`${fmt(Number(value), 2)}x ($${fmt(Number(value) * preCrisisBrent, 0)}/bbl)`, 'Price Ratio']} contentStyle={{ fontSize: 11, background: '#fff', border: '1px solid #e2e0dc' }} />
               <Bar dataKey="value" fill={priceColor} radius={[4, 4, 0, 0]} barSize={60}>
                 <Cell fill={priceColor} />
