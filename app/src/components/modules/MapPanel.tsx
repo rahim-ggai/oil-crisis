@@ -176,30 +176,20 @@ export function MapPanel() {
     }
   };
 
-  // Auto-load default vessels on mount
-  useEffect(() => {
-    if (!initialLoadDone) {
-      setInitialLoadDone(true);
-      setInitialLoading(true);
-
-      // Load each default IMO one by one
-      const loadVessels = async () => {
-        for (const imo of DEFAULT_IMOS) {
-          try {
-            await fetchVesselPosition(imo);
-            // Small delay between requests to avoid rate limiting
-            await new Promise((resolve) => setTimeout(resolve, 500));
-          } catch (err) {
-            console.error(`Failed to load vessel ${imo}:`, err);
-          }
-        }
-        setInitialLoading(false);
-      };
-
-      loadVessels();
+  // Load default vessels on trigger button click (not auto-load)
+  const loadDefaultVessels = async () => {
+    setInitialLoading(true);
+    setInitialLoadDone(true);
+    for (const imo of DEFAULT_IMOS) {
+      try {
+        await fetchVesselPosition(imo);
+        await new Promise((resolve) => setTimeout(resolve, 500));
+      } catch (err) {
+        console.error(`Failed to load vessel ${imo}:`, err);
+      }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialLoadDone]);
+    setInitialLoading(false);
+  };
 
   return (
     <ModulePanel
@@ -207,11 +197,25 @@ export function MapPanel() {
       subtitle="Track oil tankers and cargo vessels in real-time using MyShipTracking API"
     >
       <div className="space-y-6">
-        {initialLoading && vessels.length === 0 && (
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+        {!initialLoadDone && (
+          <div className="bg-input-bg border border-border rounded-lg p-4 flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-navy">Load {DEFAULT_IMOS.length} tracked vessels</p>
+              <p className="text-[10px] text-slate mt-0.5">IMOs: {DEFAULT_IMOS.join(', ')}</p>
+            </div>
+            <button
+              onClick={loadDefaultVessels}
+              className="px-4 py-2 text-sm font-medium bg-navy text-white rounded hover:bg-navy-light transition-colors"
+            >
+              Track Vessels
+            </button>
+          </div>
+        )}
+        {initialLoading && (
+          <div className="bg-input-bg border border-border rounded-lg p-4">
             <div className="flex items-center gap-3">
-              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
-              <p className="text-blue-800 font-medium">
+              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-navy"></div>
+              <p className="text-navy font-medium text-sm">
                 Loading {DEFAULT_IMOS.length} vessels... Please wait
               </p>
             </div>
