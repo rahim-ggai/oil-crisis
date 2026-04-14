@@ -762,7 +762,7 @@ const QUESTIONS = [
   },
   {
     number: '02',
-    question: 'Which fuels require rationing, and how severe should it be?',
+    question: 'When should the government begin rationing fuel for each of these fuel types?',
   },
   {
     number: '03',
@@ -1108,12 +1108,46 @@ export function CrisisDecisionHome() {
       m7Austerity={m7.austerityMatrix}
       m7Emergency={m7.emergencyMatrix}
     />,
-    /* Q2: Fuel gauges instead of bar chart */
-    <div key="q2" className="flex items-end justify-center gap-4 py-2">
-      {daysOfCoverData.map((d) => (
-        <FuelGauge key={d.fuel} label={d.fuel} fullLabel={d.fuel === 'HSD' ? 'High Speed Diesel' : d.fuel === 'MS' ? 'Motor Spirit' : d.fuel === 'FO' ? 'Furnace Oil' : 'Jet Fuel'} days={d.days} threshold={d.threshold} maxDays={d.fuel === 'FO' ? 100 : 60} />
-      ))}
-    </div>,
+    /* Q2: Aligned vertical bars with thresholds + M1 data */
+    <Card key="q2" title="Days of Cover by Fuel Type (from M1 Inventory)">
+      <p className="text-[10px] text-slate mb-2">
+        Stock: HSD {Math.round(m1.hsdStock).toLocaleString()} MT | MS {Math.round(m1.msStock).toLocaleString()} MT | FO {Math.round(m1.foStock).toLocaleString()} MT | JP-1 {Math.round(m1.jp1Stock).toLocaleString()} MT
+      </p>
+      <p className="text-[10px] text-slate mb-3">
+        Daily consumption: HSD {Math.round(m1.hsdDailyConsumption).toLocaleString()} MT/d | MS {Math.round(m1.msDailyConsumption).toLocaleString()} MT/d | FO {Math.round(m1.foDailyConsumption).toLocaleString()} MT/d
+      </p>
+      <ResponsiveContainer width="100%" height={300}>
+        <BarChart data={daysOfCoverData} margin={{ top: 20, right: 20, bottom: 5, left: 10 }} barGap={20} barCategoryGap="25%">
+          <CartesianGrid strokeDasharray="3 3" stroke="#e2e0dc" horizontal={true} vertical={false} />
+          <XAxis dataKey="fuel" tick={{ fontSize: 12, fill: '#1a1a2e', fontWeight: 600 }} />
+          <YAxis domain={[0, 100]} tick={{ fontSize: 10, fill: '#64748b' }} tickFormatter={(v: number) => `${v}d`} />
+          <Tooltip
+            formatter={(value: unknown) => [`${fmt(Number(value), 1)} days`, 'Days of Cover']}
+            contentStyle={{ fontSize: 11, background: '#fff', border: '1px solid #e2e0dc' }}
+          />
+          <ReferenceLine y={15} stroke="#c0392b" strokeDasharray="6 3" strokeWidth={1.5} label={{ value: 'HSD Ration (15d)', position: 'right', fontSize: 8, fill: '#c0392b' }} />
+          <ReferenceLine y={18} stroke="#d4a017" strokeDasharray="6 3" strokeWidth={1.5} label={{ value: 'MS Ration (18d)', position: 'right', fontSize: 8, fill: '#d4a017' }} />
+          <Bar dataKey="days" radius={[4, 4, 0, 0]} barSize={50}>
+            {daysOfCoverData.map((d) => (
+              <Cell key={d.fuel} fill={d.days > d.threshold * 1.3 ? '#27ae60' : d.days > d.threshold ? '#d4a017' : '#c0392b'} />
+            ))}
+          </Bar>
+        </BarChart>
+      </ResponsiveContainer>
+      <div className="flex justify-center gap-6 mt-2 text-[10px]">
+        {daysOfCoverData.map((d) => (
+          <div key={d.fuel} className="text-center">
+            <span className="font-mono font-semibold text-sm" style={{ color: d.days > d.threshold * 1.3 ? '#27ae60' : d.days > d.threshold ? '#d4a017' : '#c0392b' }}>
+              {fmt(d.days, 1)}d
+            </span>
+            <span className="text-slate ml-1">/ {d.threshold}d threshold</span>
+          </div>
+        ))}
+      </div>
+      <div className="mt-3 pt-2 border-t border-border text-[10px] text-slate">
+        Rationing triggers when days of cover falls below the fuel-specific threshold. HSD ({'\u2264'}15d) and MS ({'\u2264'}18d) are the most critical — transport and private mobility depend on them.
+      </div>
+    </Card>,
     <Q3Chart key="q3" scenario={scenario} />,
     <Q4Chart key="q4" timeline={reserveTimeline} reservesFloor={m6.reservesFloor} />,
     /* Q5: Supply flow diagram */
