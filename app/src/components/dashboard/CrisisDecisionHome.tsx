@@ -292,43 +292,65 @@ const STRESS_LABELS: Record<string, string> = {
   bufferI: 'Iran Corridor',
 };
 
-function Q1Chart({ trigger, weights }: { trigger: TriggerOutput; weights: { wD: number; wP: number; wS: number; wA: number; wI: number } }) {
-  const data = [
-    { name: 'Days of Cover', key: 'stressD', raw: trigger.components.stressD, weighted: trigger.components.stressD * weights.wD, type: 'stress' },
-    { name: 'Price Stress', key: 'stressP', raw: trigger.components.stressP, weighted: trigger.components.stressP * weights.wP, type: 'stress' },
-    { name: 'Pipeline Risk', key: 'stressS', raw: trigger.components.stressS, weighted: trigger.components.stressS * weights.wS, type: 'stress' },
-    { name: 'Alternates Buffer', key: 'bufferA', raw: trigger.components.bufferA, weighted: -(trigger.components.bufferA * weights.wA * 0.5), type: 'buffer' },
-    { name: 'Iran Corridor', key: 'bufferI', raw: trigger.components.bufferI, weighted: -(trigger.components.bufferI * weights.wI * 0.5), type: 'buffer' },
-  ];
+function Q1Chart({ trigger, daysOfCover, priceRatio, currentBrent, preCrisisBrent }: {
+  trigger: TriggerOutput;
+  daysOfCover: number;
+  priceRatio: number;
+  currentBrent: number;
+  preCrisisBrent: number;
+}) {
+  const daysColor = daysOfCover > 18 ? '#27ae60' : daysOfCover > 12 ? '#d4a017' : '#c0392b';
+  const priceColor = priceRatio < 1.5 ? '#27ae60' : priceRatio < 2.5 ? '#d4a017' : '#c0392b';
+
+  const daysData = [{ name: 'Days of Cover', value: daysOfCover }];
+  const priceData = [{ name: 'Price Ratio', value: priceRatio }];
 
   return (
-    <Card title={`Composite Stress: ${fmt(trigger.compositeStress, 1)} / 100`}>
-      <ResponsiveContainer width="100%" height={220}>
-        <BarChart data={data} layout="vertical" margin={{ left: 80, right: 20, top: 5, bottom: 5 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#e2e0dc" />
-          <XAxis type="number" domain={[-20, 50]} tick={{ fontSize: 11 }} />
-          <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} width={80} />
-          <Tooltip
-            formatter={(value: unknown, name: unknown) => [fmt(Number(value), 2), String(name) === 'weighted' ? 'Weighted Contribution' : 'Raw Score']}
-            contentStyle={{ fontSize: 11, background: '#fff', border: '1px solid #e2e0dc' }}
-          />
-          <Bar dataKey="weighted" name="Weighted Contribution" radius={[0, 3, 3, 0]}>
-            {data.map((entry) => (
-              <Cell
-                key={entry.key}
-                fill={STRESS_COLORS[entry.key]}
-              />
-            ))}
-          </Bar>
-        </BarChart>
-      </ResponsiveContainer>
-      <div className="flex items-center gap-3 mt-2 flex-wrap">
-        {data.map((d) => (
-          <span key={d.key} className="flex items-center gap-1 text-[10px] text-slate">
-            <span className="inline-block w-2 h-2 rounded-full" style={{ background: STRESS_COLORS[d.key] }} />
-            {d.name}
-          </span>
-        ))}
+    <Card title={`Composite Stress: ${fmt(trigger.compositeStress, 1)} / 100 — ${trigger.recommendedLevel}`}>
+      <div className="grid grid-cols-2 gap-4">
+        {/* Days of Cover */}
+        <div>
+          <p className="text-[10px] text-slate uppercase tracking-wide mb-1 text-center">Days of Fuel Cover</p>
+          <ResponsiveContainer width="100%" height={250}>
+            <BarChart data={daysData} margin={{ top: 10, right: 10, bottom: 5, left: 10 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#e2e0dc" horizontal={true} vertical={false} />
+              <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#64748b' }} />
+              <YAxis domain={[0, 40]} tick={{ fontSize: 10, fill: '#64748b' }} tickFormatter={(v: number) => `${v}d`} />
+              <ReferenceLine y={18} stroke="#d4a017" strokeDasharray="6 3" strokeWidth={1.5} label={{ value: 'Alert (18d)', position: 'right', fontSize: 9, fill: '#d4a017' }} />
+              <ReferenceLine y={12} stroke="#e67e22" strokeDasharray="6 3" strokeWidth={1.5} label={{ value: 'Austerity (12d)', position: 'right', fontSize: 9, fill: '#e67e22' }} />
+              <ReferenceLine y={7} stroke="#c0392b" strokeDasharray="6 3" strokeWidth={1.5} label={{ value: 'Emergency (7d)', position: 'right', fontSize: 9, fill: '#c0392b' }} />
+              <Tooltip formatter={(value: unknown) => [`${fmt(Number(value), 1)} days`, 'Days of Cover']} contentStyle={{ fontSize: 11, background: '#fff', border: '1px solid #e2e0dc' }} />
+              <Bar dataKey="value" fill={daysColor} radius={[4, 4, 0, 0]} barSize={60}>
+                <Cell fill={daysColor} />
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+          <p className="text-center font-mono text-lg font-semibold" style={{ color: daysColor }}>
+            {fmt(daysOfCover, 1)} days
+          </p>
+        </div>
+
+        {/* Price Stress */}
+        <div>
+          <p className="text-[10px] text-slate uppercase tracking-wide mb-1 text-center">Brent Price Ratio (vs Pre-Crisis)</p>
+          <ResponsiveContainer width="100%" height={250}>
+            <BarChart data={priceData} margin={{ top: 10, right: 10, bottom: 5, left: 10 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#e2e0dc" horizontal={true} vertical={false} />
+              <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#64748b' }} />
+              <YAxis domain={[0, 5]} tick={{ fontSize: 10, fill: '#64748b' }} tickFormatter={(v: number) => `${v}x`} />
+              <ReferenceLine y={1.5} stroke="#d4a017" strokeDasharray="6 3" strokeWidth={1.5} label={{ value: 'Alert (1.5x)', position: 'right', fontSize: 9, fill: '#d4a017' }} />
+              <ReferenceLine y={2.5} stroke="#e67e22" strokeDasharray="6 3" strokeWidth={1.5} label={{ value: 'Austerity (2.5x)', position: 'right', fontSize: 9, fill: '#e67e22' }} />
+              <ReferenceLine y={4.0} stroke="#c0392b" strokeDasharray="6 3" strokeWidth={1.5} label={{ value: 'Emergency (4x)', position: 'right', fontSize: 9, fill: '#c0392b' }} />
+              <Tooltip formatter={(value: unknown) => [`${fmt(Number(value), 2)}x ($${fmt(Number(value) * preCrisisBrent, 0)}/bbl)`, 'Price Ratio']} contentStyle={{ fontSize: 11, background: '#fff', border: '1px solid #e2e0dc' }} />
+              <Bar dataKey="value" fill={priceColor} radius={[4, 4, 0, 0]} barSize={60}>
+                <Cell fill={priceColor} />
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+          <p className="text-center font-mono text-lg font-semibold" style={{ color: priceColor }}>
+            {fmt(priceRatio, 2)}x (${fmt(currentBrent, 0)}/bbl)
+          </p>
+        </div>
       </div>
     </Card>
   );
@@ -923,8 +945,20 @@ export function CrisisDecisionHome() {
     computeIranCorridor(scenario.m5, scenario.baselineMode, scenario.formulaParams),
   [scenario]);
 
+  const weightedDays = useMemo(() => {
+    const hsd = getDaysOfCover(m1.hsdStock, m1.hsdDailyConsumption);
+    const ms = getDaysOfCover(m1.msStock, m1.msDailyConsumption);
+    const fo = getDaysOfCover(m1.foStock, m1.foDailyConsumption);
+    return 0.5 * hsd + 0.35 * ms + 0.15 * fo;
+  }, [m1]);
+
   const charts = [
-    <Q1Chart key="q1" trigger={trigger} weights={scenario.m8.weights} />,
+    <Q1Chart key="q1" trigger={trigger}
+      daysOfCover={weightedDays}
+      priceRatio={m6.currentBrentSpot / m6.preCrisisBrent}
+      currentBrent={m6.currentBrentSpot}
+      preCrisisBrent={m6.preCrisisBrent}
+    />,
     /* Q2: Fuel gauges instead of bar chart */
     <div key="q2" className="flex items-end justify-center gap-4 py-2">
       {daysOfCoverData.map((d) => (
