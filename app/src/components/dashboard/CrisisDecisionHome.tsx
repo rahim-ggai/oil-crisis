@@ -407,16 +407,9 @@ function Q1Chart({ trigger, daysOfCover, priceRatio, currentBrent, preCrisisBren
               <CartesianGrid strokeDasharray="3 3" stroke="#e2e0dc" horizontal={true} vertical={false} />
               <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#64748b' }} />
               <YAxis domain={[0, 40]} tick={{ fontSize: 10, fill: '#64748b' }} tickFormatter={(v: number) => `${v}d`} />
-              {/* Show only the triggered threshold */}
-              {daysOfCover <= 7 ? (
-                <ReferenceLine y={7} stroke="#c0392b" strokeDasharray="6 3" strokeWidth={2} label={{ value: 'EMERGENCY (7d)', position: 'right', fontSize: 9, fill: '#c0392b', fontWeight: 700 }} />
-              ) : daysOfCover <= 12 ? (
-                <ReferenceLine y={12} stroke="#e67e22" strokeDasharray="6 3" strokeWidth={2} label={{ value: 'AUSTERITY (12d)', position: 'right', fontSize: 9, fill: '#e67e22', fontWeight: 700 }} />
-              ) : daysOfCover <= 18 ? (
-                <ReferenceLine y={18} stroke="#d4a017" strokeDasharray="6 3" strokeWidth={2} label={{ value: 'ALERT (18d)', position: 'right', fontSize: 9, fill: '#d4a017', fontWeight: 700 }} />
-              ) : (
-                <ReferenceLine y={18} stroke="#d4a017" strokeDasharray="6 3" strokeWidth={1} label={{ value: 'Alert threshold (18d)', position: 'right', fontSize: 8, fill: '#d4a017' }} />
-              )}
+              <ReferenceLine y={18} stroke="#d4a017" strokeDasharray="6 3" strokeWidth={1.5} label={{ value: 'Alert (18d)', position: 'right', fontSize: 9, fill: '#d4a017' }} />
+              <ReferenceLine y={12} stroke="#e67e22" strokeDasharray="6 3" strokeWidth={1.5} label={{ value: 'Austerity (12d)', position: 'right', fontSize: 9, fill: '#e67e22' }} />
+              <ReferenceLine y={7} stroke="#c0392b" strokeDasharray="6 3" strokeWidth={1.5} label={{ value: 'Emergency (7d)', position: 'right', fontSize: 9, fill: '#c0392b' }} />
               <Tooltip formatter={(value: unknown) => [`${fmt(Number(value), 1)} days`, 'Days of Cover']} contentStyle={{ fontSize: 11, background: '#fff', border: '1px solid #e2e0dc' }} />
               <Bar dataKey="value" fill={daysColor} radius={[4, 4, 0, 0]} barSize={60}>
                 <Cell fill={daysColor} />
@@ -436,16 +429,9 @@ function Q1Chart({ trigger, daysOfCover, priceRatio, currentBrent, preCrisisBren
               <CartesianGrid strokeDasharray="3 3" stroke="#e2e0dc" horizontal={true} vertical={false} />
               <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#64748b' }} />
               <YAxis domain={[0, 5]} tick={{ fontSize: 10, fill: '#64748b' }} tickFormatter={(v: number) => `${v}x`} />
-              {/* Show only the triggered threshold */}
-              {priceRatio >= 4.0 ? (
-                <ReferenceLine y={4.0} stroke="#c0392b" strokeDasharray="6 3" strokeWidth={2} label={{ value: 'EMERGENCY (4x)', position: 'right', fontSize: 9, fill: '#c0392b', fontWeight: 700 }} />
-              ) : priceRatio >= 2.5 ? (
-                <ReferenceLine y={2.5} stroke="#e67e22" strokeDasharray="6 3" strokeWidth={2} label={{ value: 'AUSTERITY (2.5x)', position: 'right', fontSize: 9, fill: '#e67e22', fontWeight: 700 }} />
-              ) : priceRatio >= 1.5 ? (
-                <ReferenceLine y={1.5} stroke="#d4a017" strokeDasharray="6 3" strokeWidth={2} label={{ value: 'ALERT (1.5x)', position: 'right', fontSize: 9, fill: '#d4a017', fontWeight: 700 }} />
-              ) : (
-                <ReferenceLine y={1.5} stroke="#d4a017" strokeDasharray="6 3" strokeWidth={1} label={{ value: 'Alert threshold (1.5x)', position: 'right', fontSize: 8, fill: '#d4a017' }} />
-              )}
+              <ReferenceLine y={1.5} stroke="#d4a017" strokeDasharray="6 3" strokeWidth={1.5} label={{ value: 'Alert (1.5x)', position: 'right', fontSize: 9, fill: '#d4a017' }} />
+              <ReferenceLine y={2.5} stroke="#e67e22" strokeDasharray="6 3" strokeWidth={1.5} label={{ value: 'Austerity (2.5x)', position: 'right', fontSize: 9, fill: '#e67e22' }} />
+              <ReferenceLine y={4.0} stroke="#c0392b" strokeDasharray="6 3" strokeWidth={1.5} label={{ value: 'Emergency (4x)', position: 'right', fontSize: 9, fill: '#c0392b' }} />
               <Tooltip formatter={(value: unknown) => [`${fmt(Number(value), 2)}x ($${fmt(Number(value) * preCrisisBrent, 0)}/bbl)`, 'Price Ratio']} contentStyle={{ fontSize: 11, background: '#fff', border: '1px solid #e2e0dc' }} />
               <Bar dataKey="value" fill={priceColor} radius={[4, 4, 0, 0]} barSize={60}>
                 <Cell fill={priceColor} />
@@ -460,35 +446,69 @@ function Q1Chart({ trigger, daysOfCover, priceRatio, currentBrent, preCrisisBren
 
       {/* Conservation Strategy Visual */}
       <div className="mt-4 pt-4 border-t border-border">
-        <h4 className="text-xs font-semibold text-navy uppercase tracking-wide mb-3">
-          Conservation Strategy by Parameter
-        </h4>
-        <p className="text-[10px] text-slate mb-3">
-          Each row shows capacity remaining (filled blocks out of 10) at each conservation level. Fewer blocks = more restriction.
-        </p>
+        {(() => {
+          const triggeredLevel = trigger.recommendedLevel;
+          const levelLabel = triggeredLevel === 'NORMAL' ? 'Alert' : triggeredLevel === 'ALERT' ? 'Alert' : triggeredLevel === 'AUSTERITY' ? 'Austerity' : 'Emergency';
+          const levelColor = triggeredLevel === 'EMERGENCY' ? '#c0392b' : triggeredLevel === 'AUSTERITY' ? '#e67e22' : '#d4a017';
+          const levelMatrix = triggeredLevel === 'EMERGENCY' ? m7Emergency : triggeredLevel === 'AUSTERITY' ? m7Austerity : m7Alert;
 
-        {/* Visual bars */}
-        <div className="mb-4">
-          {(['privateVehicles', 'goodsTransport', 'industryAllocation', 'publicTransport', 'powerGeneration', 'lockdownDays', 'agriculture', 'aviation'] as const).map((key) => (
-            <ConservationParamVisual
-              key={key}
-              paramKey={key}
-              alert={m7Alert[key]}
-              austerity={m7Austerity[key]}
-              emergency={m7Emergency[key]}
-            />
-          ))}
-        </div>
+          return (
+            <>
+              <h4 className="text-xs font-semibold text-navy uppercase tracking-wide mb-1">
+                Conservation Strategy — {levelLabel} Level
+              </h4>
+              <p className="text-[10px] text-slate mb-3">
+                Active measures at the currently triggered conservation level. Blocks show capacity remaining (filled out of 10).
+              </p>
 
-        {/* Summary table */}
+              {/* Visual bars — single level */}
+              <div className="mb-4">
+                {(['privateVehicles', 'goodsTransport', 'industryAllocation', 'publicTransport', 'powerGeneration', 'lockdownDays', 'agriculture', 'aviation'] as const).map((key) => {
+                  const info = PARAM_ICONS[key] || { unit: key };
+                  const policy = levelMatrix[key];
+                  // Extract percentage
+                  function extractPct(text: string): number {
+                    if (text.toLowerCase().includes('complete ban') || text.toLowerCase().includes('none')) return 0;
+                    if (text.toLowerCase().includes('normal') || text.toLowerCase().includes('full')) return 100;
+                    const match = text.match(/(\d+)%/);
+                    if (match) return parseInt(match[1]);
+                    if (text.toLowerCase().includes('odd/even')) return 50;
+                    if (text.toLowerCase().includes('weekend driving ban')) return 30;
+                    if (text.toLowerCase().includes('1 day/week')) return 85;
+                    if (text.toLowerCase().includes('2 days/week')) return 71;
+                    if (text.toLowerCase().includes('expanded') || text.toLowerCase().includes('24/7')) return 110;
+                    if (text.toLowerCase().includes('cut 40%')) return 60;
+                    if (text.toLowerCase().includes('cut 80%')) return 20;
+                    return 50;
+                  }
+                  const pct = extractPct(policy);
+                  const filled = Math.round((pct / 100) * 10);
+                  return (
+                    <div key={key} className="flex items-center gap-3 py-1.5 border-b border-border/30 last:border-0">
+                      <div className="w-28 flex-shrink-0">
+                        <span className="text-[10px] font-medium text-navy">{info.unit}</span>
+                      </div>
+                      <div className="flex gap-0.5">
+                        {Array.from({ length: 10 }, (_, i) => (
+                          <div key={i} className="w-4 h-5 rounded-sm" style={{ backgroundColor: i < filled ? levelColor : '#e2e0dc', opacity: i < filled ? 0.85 : 0.25 }} />
+                        ))}
+                      </div>
+                      <span className="text-[10px] text-slate ml-2 flex-1">{policy}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </>
+          );
+        })()}
+
+        {/* Summary table — single triggered level */}
         <div className="overflow-x-auto">
           <table className="w-full text-[10px]">
             <thead>
               <tr className="border-b border-border">
                 <th className="text-left py-1 pr-2 font-medium text-slate">Parameter</th>
-                <th className="text-left py-1 px-2 font-medium text-ochre">Alert</th>
-                <th className="text-left py-1 px-2 font-medium text-[#e67e22]">Austerity</th>
-                <th className="text-left py-1 px-2 font-medium text-red-muted">Emergency</th>
+                <th className="text-left py-1 px-2 font-medium text-navy">Current Policy ({trigger.recommendedLevel === 'NORMAL' ? 'Alert' : trigger.recommendedLevel.charAt(0) + trigger.recommendedLevel.slice(1).toLowerCase()})</th>
               </tr>
             </thead>
             <tbody>
@@ -501,14 +521,15 @@ function Q1Chart({ trigger, daysOfCover, priceRatio, currentBrent, preCrisisBren
                 ['Lockdown Days', 'lockdownDays'],
                 ['Agriculture', 'agriculture'],
                 ['Aviation', 'aviation'],
-              ] as const).map(([label, key]) => (
-                <tr key={key} className="border-b border-border/30">
-                  <td className="py-1 pr-2 font-medium text-navy">{label}</td>
-                  <td className="py-1 px-2 text-slate">{m7Alert[key]}</td>
-                  <td className="py-1 px-2 text-slate">{m7Austerity[key]}</td>
-                  <td className="py-1 px-2 text-slate">{m7Emergency[key]}</td>
-                </tr>
-              ))}
+              ] as const).map(([label, key]) => {
+                const matrix = trigger.recommendedLevel === 'EMERGENCY' ? m7Emergency : trigger.recommendedLevel === 'AUSTERITY' ? m7Austerity : m7Alert;
+                return (
+                  <tr key={key} className="border-b border-border/30">
+                    <td className="py-1 pr-2 font-medium text-navy">{label}</td>
+                    <td className="py-1 px-2 text-slate">{matrix[key]}</td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
