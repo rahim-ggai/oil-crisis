@@ -122,9 +122,12 @@ export function Dashboard() {
       .then((data) => {
         if (data.error) { setLivePriceError(data.error); return; }
         setLivePrice({ price: data.price, updatedAt: data.updatedAt, change24h: data.change24h });
+        // Auto-apply live price to scenario so it flows to footer/status bar
+        const rounded = Math.round(data.price * 100) / 100;
+        updateM6({ currentBrentSpot: rounded, brentMultiplier: Math.round((rounded / m6.preCrisisBrent) * 100) / 100 });
       })
       .catch(() => setLivePriceError('Failed to fetch'));
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const usableReserves = Math.max(0, m6.sbpReserves - m6.reservesFloor);
   const monthsOfImports = m6.normalMonthlyImportBill > 0 ? m6.sbpReserves / m6.normalMonthlyImportBill : 0;

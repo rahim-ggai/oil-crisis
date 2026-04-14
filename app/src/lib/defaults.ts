@@ -125,8 +125,8 @@ export const DEFAULT_M5: M5State = {
 // ============================================================
 export const DEFAULT_M6: M6State = {
   preCrisisBrent: 71, // ICE Brent Futures, 27 Feb 2026
-  currentBrentSpot: 132, // Dated Brent physical $131.97 (CNBC 10-Apr-2026); futures ~$97 but physical reflects actual procurement cost
-  brentMultiplier: 1.86, // 132/71 = 1.86
+  currentBrentSpot: 98, // Brent spot ~$98/bbl (oilpriceapi.com live, Apr 2026); overridden by live API when available
+  brentMultiplier: 1.38, // 98/71 = 1.38
   sbpReserves: 15.0, // $16.4B as of 3-Apr-2026 minus $1.4B Eurobond repayment on 8-Apr (ProPakistani)
   reservesFloor: 10,
   imfAvailable: 1.21, // 3rd EFF review + 2nd RSF staff-level agreement, Mar 27 2026 (IMF.org)
